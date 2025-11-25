@@ -1,3 +1,0 @@
-D:/7wonders_clone/build/CMakeFiles/7WondersDuel.dir
-D:/7wonders_clone/build/CMakeFiles/edit_cache.dir
-D:/7wonders_clone/build/CMakeFiles/rebuild_cache.dir
