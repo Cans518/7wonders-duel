@@ -1,0 +1,20 @@
+[
+{
+  "directory": "D:/7wonders_clone/build",
+  "command": "D:\\mingw\\mingw64\\bin\\g++.exe -D_WIN32_WINNT=0x0600 @CMakeFiles/7WondersDuel.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\7WondersDuel.dir\\src\\core\\Board.cpp.obj -c D:\\7wonders_clone\\src\\core\\Board.cpp",
+  "file": "D:/7wonders_clone/src/core/Board.cpp",
+  "output": "CMakeFiles/7WondersDuel.dir/src/core/Board.cpp.obj"
+},
+{
+  "directory": "D:/7wonders_clone/build",
+  "command": "D:\\mingw\\mingw64\\bin\\g++.exe -D_WIN32_WINNT=0x0600 @CMakeFiles/7WondersDuel.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\7WondersDuel.dir\\src\\core\\Game.cpp.obj -c D:\\7wonders_clone\\src\\core\\Game.cpp",
+  "file": "D:/7wonders_clone/src/core/Game.cpp",
+  "output": "CMakeFiles/7WondersDuel.dir/src/core/Game.cpp.obj"
+},
+{
+  "directory": "D:/7wonders_clone/build",
+  "command": "D:\\mingw\\mingw64\\bin\\g++.exe -D_WIN32_WINNT=0x0600 @CMakeFiles/7WondersDuel.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\7WondersDuel.dir\\src\\main.cpp.obj -c D:\\7wonders_clone\\src\\main.cpp",
+  "file": "D:/7wonders_clone/src/main.cpp",
+  "output": "CMakeFiles/7WondersDuel.dir/src/main.cpp.obj"
+}
+]
