@@ -1,5 +1,4 @@
 #include "member2.h"
-#include "player/game.h"
 #include <stdexcept>  // 用于std::runtime_error
 
 // Card类实现

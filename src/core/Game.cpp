@@ -1,8 +1,4 @@
 #include "Game.h"
-// 引入 Mock 类或者队友写好的头文件
-// 目前用 Mock 来测试
-#include "../MockClasses.h" 
-
 #include <iostream>
 
 Game* Game::instance = nullptr;
@@ -34,71 +30,96 @@ void Game::init() {
         p->addCoins(7); 
     }
 
-    // TODO: Member 2 需要在这里初始化 Age 1 的卡牌金字塔 
-    // CardStructure::loadAge(1); 
+    // TODO: 替代之前 Mock 的 CardStructure 初始化
+    // 假设 Member 2 提供了一个 CardStructureFactory
+    // cardStructure = CardStructureFactory::createAge(1);
+    
+    // 暂时用一个空的 CardStructure 来通过编译
+    std::vector<std::unique_ptr<Card>> empty_deck;
+    cardStructure = std::make_unique<CardStructure>(1, std::move(empty_deck));
 }
+
+//新增：takeCard 核心逻辑
+void Game::takeCard(int pos, Player& player) {
+    std::cout << "[Game] " << player.getName() << " attempting to take card at position " << pos << std::endl;
+    
+    // 1. 取出卡牌 (调用 Member 2 的逻辑)
+    std::unique_ptr<Card> card = cardStructure->take_card(pos); 
+    
+    // 2. 检查建造条件并支付
+    if (!card->can_build_free(player)) {
+        // 调用 Member 3 的支付逻辑
+        // TODO: 检查资源和金币是否足够，如果不够则抛出错误
+        //player.payCost(card->cost, *getOpponent());
+    }
+    
+    // 3. 应用卡牌效果
+    if (card->effect) {
+        Player* opponent = getOpponent();
+        card->effect(player, *opponent, *this);
+    }
+    
+    // 4. 记录已建卡牌 (用于连锁和得分)
+    // 调用 Member 3 的方法
+    // player.addBuiltCard(card->name, card->color);
+    
+    // 5. 切换玩家
+    currentPlayerIdx = (currentPlayerIdx + 1) % 2;
+}
+
+// TODO: 实现 buildWonder 和 discardForCoins
+// buildWonder 和 discardForCoins 的实现逻辑类似 takeCard，但效果不同。
+// 它们也必须在函数末尾调用 currentPlayerIdx = (currentPlayerIdx + 1) % 2; 切换玩家。
+
 
 void Game::run() {
     init();
 
+    // 🔴 步骤 1：在 Game::run() 中初始化 Controller
+    Controller controller(*this); 
+
     while (!isGameOver && currentAge <= 3) {
         std::cout << "\n--- Start of Age " << currentAge << " ---" << std::endl;
         
-        // 模拟一个时代的流程：假设每个时代有20张卡 
-        // 这里的循环条件应该是: while(!cardStructure.isEmpty())
-        // 为了演示，我们模拟几回合
-        int turns = 0;
-        while (turns < 6 && !isGameOver) { 
-            playTurn();
+        // 🔴 步骤 2：核心修正！循环条件不再是 turns < 6，而是卡牌结构为空
+        while (!isGameOver && !cardStructure->is_empty()) { 
             
+            // 🔴 步骤 3：直接调用 playTurn()，让它处理一个回合的逻辑
+            playTurn(controller); // 传入 controller
+            
+            // 检查胜利条件依然保留
             if (checkSupremacyVictory()) {
                 isGameOver = true;
                 break;
             }
-            turns++;
         }
 
-        if (!isGameOver) {
+    if (!isGameOver) {
             endAge();
         }
-    }
-
-    // 如果没人突袭胜利，计算分数
-    if (!isGameOver) {
-        std::cout << "[Game] Civilian Victory Calculation..." << std::endl;
-        // 计算分数的逻辑...
-    }
     
     std::cout << "[Game] Game Over." << std::endl;
+    // ... (省略游戏结束后的算分和打印)
+}
 }
 
-void Game::playTurn() {
-    Player* curr = getCurrentPlayer();
+void Game::playTurn(Controller& controller) { 
+    Player* curr = getCurrentPlayer(); // 获取当前玩家指针
+
+    // 1. 打印提示
     std::cout << "\n[Turn] It is " << curr->getName() << "'s turn." << std::endl;
-
-    // 1. 获取输入 (Controller/View) - 这里简化为模拟
-    // 假设玩家选择了一张卡并建造
     
-    // /// [DEPENDENCY] 可能需要更改: 资源检查逻辑
-    // Member 3 的 Player 类应该有 checkResources(cost) 方法
+    // 🔴 核心功能：将控制权委托给 Controller
+    // Controller::player_turn 负责：
+    // - 展示游戏状态 (View)
+    // - 读取用户输入 ("take 3", "discard 5" 等)
+    // - 调用 Game::takeCard 或 Game::discardForCoins 来执行操作
+    controller.player_turn(*curr); 
     
-    // 2. 执行动作 (建造/弃牌/奇迹) 
-    std::cout << "  Action: Constructing a Building..." << std::endl;
-    
-    // 3. 检查卡牌效果 (Member 2 的 Card 类)
-    // 如果是军事卡 (Red)，移动棋子 
-    // 模拟：假设这张卡有 1 个盾牌
-    bool supremacy = board->movePawn(currentPlayerIdx == 0 ? -1 : 1); 
-    
-    if (supremacy) {
-        isGameOver = true;
-        std::cout << "  Military Supremacy Achieved!" << std::endl;
-        return;
-    }
-
-    // 4. 切换玩家
-    // 注意：有些奇迹让玩家 "Play Again" ，这里先略过
-    currentPlayerIdx = (currentPlayerIdx + 1) % 2;
+    // ⚠️ 注意：
+    // 1. 之前所有的模拟代码（如 Action: Constructing a Building... 和 board->movePawn）全部被移除！
+    // 2. 切换玩家的逻辑 (currentPlayerIdx = (currentPlayerIdx + 1) % 2) 必须被移除，
+    //    它已经被移动到 Game::takeCard, Game::buildWonder, Game::discardForCoins 这三个方法中。
 }
 
 bool Game::checkSupremacyVictory() {

@@ -2,12 +2,11 @@
 #include <vector>
 #include <memory>
 #include "Board.h"
+#include "../player/game.h"
+#include "../cards/member2.h"
 
-// 前向声明 (Forward Declaration)：
-// 告诉编译器这些类存在，但在 .cpp 里才引用具体头文件。
-// 这样可以减少头文件依赖冲突。
-class Player;         // Member 3 的类
-class CardStructure;  // Member 2 的类 (金字塔结构)
+// class Player;
+// class CardStructure;
 
 class Game {
 private:
@@ -31,6 +30,7 @@ public:
     // 禁止拷贝
     Game(const Game&) = delete;
     void operator=(const Game&) = delete;
+    std::unique_ptr<CardStructure> cardStructure;
 
     // 初始化游戏
     // 规则参考: 
@@ -41,7 +41,7 @@ public:
 
     // 处理回合逻辑
     // 规则参考: 
-    void playTurn();
+    void playTurn(Controller& controller);
 
     // 检查是否有玩家达成 科技或军事 胜利
     // 规则参考: 
@@ -55,4 +55,15 @@ public:
     Board* getBoard() { return board.get(); }
     Player* getCurrentPlayer();
     Player* getOpponent();
+
+    // 供 Controller 使用：获取当前时代卡牌结构
+    CardStructure& getCardStructure() { return *cardStructure; } 
+
+    // 供 Card Effect 使用：
+    void setIsGameOver(bool status) { isGameOver = status; }
+
+    // 供 Controller 使用：三个核心动作
+    void takeCard(int pos, Player& player);
+    void buildWonder(int wonderIdx, int pos, Player& player);
+    void discardForCoins(int pos, Player& player);
 };
