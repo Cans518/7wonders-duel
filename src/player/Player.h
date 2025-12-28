@@ -57,91 +57,91 @@ public:
 
     // 玩家信息
     
-    std::string getName() const { return name; }
-    void setName(const std::string& playerName) { name = playerName; }
+    std::string get_name() const { return name; }
+    void set_name(const std::string& playerName) { name = playerName; }
     
-    PlayerType getType() const { return type; }
-    void setType(PlayerType playerType) { type = playerType; }
+    PlayerType get_type() const { return type; }
+    void set_type(PlayerType playerType) { type = playerType; }
     
-    bool isHuman() const { return type == PlayerType::HUMAN; }
-    bool isAI() const { return type == PlayerType::AI_RANDOM; }
+    bool is_human() const { return type == PlayerType::HUMAN; }
+    bool is_ai() const { return type == PlayerType::AI_RANDOM; }
 
 
 
     // 资源管理
     
     //添加资源产出：增加玩家的永久产出能力
-    void addResource(Resource resource, int amount);
+    void add_resource(Resource resource, int amount);
 
     //获取资源产出：返回玩家某种资源的总产出
-    int getResource(Resource resource) const;
+    int get_resource(Resource resource) const;
 
     //检查是否拥有贸易折扣
-    bool hasTradingPost(Resource resource) const;
+    bool has_trading_post(Resource resource) const;
 
     //添加贸易折扣
-    void addTradingPost(Resource resource);
+    void add_trading_post(Resource resource);
 
     // 添加二选一资源产出
-    void addWildcardResource(const std::set<Resource>& options);
+    void add_wildcard_resource(const std::set<Resource>& options);
 
     //获取所有二选一资源
-    const std::vector<std::set<Resource>>& getWildcardResources() const { return wildcardResources; }
+    const std::vector<std::set<Resource>>& get_wildcard_resources() const { return wildcardResources; }
 
     //检查是否拥有足够资源
-    bool hasEnoughResource(Resource resource, int amount) const;
+    bool has_enough_resource(Resource resource, int amount) const;
 
 
 
     //金币管理
     
     //获取金币数量
-    int getCoins() const;
+    int get_coins() const;
 
     //消耗金币：扣除指定数量的金币
-    bool spendCoins(int amount);
+    bool spend_coins(int amount);
 
     //增加金币
-    void addCoins(int amount);
+    void add_coins(int amount);
 
 
 
     //卡牌管理
     
     // 添加已建造的卡牌：玩家建造卡牌后调用
-    void addBuiltCard(const std::string& cardName, Color cardColor);
+    void add_built_card(const std::string& cardName, Color cardColor);
 
     //检查是否拥有指定建筑：用于连锁建造判断
-    bool hasBuilding(const std::string& cardName) const;
+    bool has_card(const std::string& cardName) const;
 
     //获取已建造的卡牌列表
-    const std::vector<std::string>& getBuiltCards() const;
+    const std::vector<std::string>& get_built_cards() const;
 
     //获取某颜色卡牌的数量
-    int getCardCountByColor(Color color) const;
+    int get_card_count_by_color(Color color) const;
 
 
 
     //资源产出卡统计（用于交易成本计算
     
     //注册资源产出卡：当玩家建造褐色/灰色卡时调用
-    void addResourceProducingCard(Resource resource);
+    void add_resource_producing_card(Resource resource);
 
     //获取某类资源的产出卡数量：用于对手计算交易成本
-    int getResourceProducingCardCount(Resource resource) const;
+    int get_resource_producing_card_count(Resource resource) const;
 
 
 
     // 军事 
     
     // 添加军事标记
-    void addMilitaryTokens(int amount);
+    void add_shield(int amount);
 
     //获取军事标记数量
-    int getMilitaryTokens() const;
+    int get_military_tokens() const;
 
     //检查是否军事获胜（军事标记达到阈值）
-    bool hasMilitaryVictory() const;
+    bool has_military_victory() const;
 
 
 
@@ -150,13 +150,13 @@ public:
     //科技 
     
     // 添加科技符号
-    void addScienceSymbol(Resource symbol);
+    void add_science_symbol(Resource symbol);
 
     //获取收集的科技符号集合
-    const std::set<Resource>& getScienceSymbols() const;
+    const std::set<Resource>& get_science_symbols() const;
 
     //检查是否科技获胜（收集6个不同科技符号或3对相同科技符号）
-    bool hasScienceVictory() const;
+    bool has_science_victory() const;
 
 
 
@@ -164,28 +164,28 @@ public:
     //  胜利点数 
     
     //添加胜利点数
-    void addVictoryPoints(int amount);
+    void add_victory_points(int amount);
 
     //获取胜利点数
-    int getVictoryPoints() const;
+    int get_victory_points() const;
 
     // 计算最终得分（包括金币）
-    int calculateFinalScore() const;
+    int calculate_final_score() const;
 
 
     
     // --- 新增：获取唯一科技符号数量 ---
-    int getUniqueScienceCount() const { 
+    int get_unique_science_count() const { 
         return scienceSymbols.size(); 
     }
 
     // --- 新增：统计黄色卡牌数量（用于弃牌金币计算） ---
-    int countYellowCards() const {
-        return getCardCountByColor(Color::YELLOW);
+    int count_yellow_cards() const {
+        return get_card_count_by_color(Color::YELLOW);
     }
     
     // --- 新增：强制扣钱（用于奇迹效果或军事惩罚） ---
-    void loseCoins(int amount) {
+    void lose_coins(int amount) {
         coins = (coins > amount) ? (coins - amount) : 0;
     }
 };

@@ -14,11 +14,11 @@ bool CostCalculator::isTradableResource(Resource resource) {
 
 // 交易成本计算
 int CostCalculator::calculateTradeCost(const Player& buyer, const Player& seller, Resource resource) {
-    if (buyer.hasTradingPost(resource)) {
+    if (buyer.has_trading_post(resource)) {
         return 1;
     }
     int baseCost = 2;
-    int sellerCardCount = seller.getResourceProducingCardCount(resource);
+    int sellerCardCount = seller.get_resource_producing_card_count(resource);
     return baseCost + sellerCardCount;
 }
 
@@ -35,7 +35,7 @@ CostCalculator::BuildCostResult CostCalculator::calculateBuildCost(
 
     // 1. 检查连锁建造
     for (const auto& pre : card.chain_prerequisites) {
-        if (player.hasBuilding(pre)) {
+        if (player.has_card(pre)) {
             result.isFreeByChain = true;
             return result;
         }
@@ -51,14 +51,14 @@ CostCalculator::BuildCostResult CostCalculator::calculateBuildCost(
     std::map<Resource, int> shortages;
     for (const auto& [resource, requiredAmount] : card.cost) {
         if (resource == Resource::COIN) continue;
-        int producedAmount = player.getResource(resource);
+        int producedAmount = player.get_resource(resource);
         if (producedAmount < requiredAmount) {
             shortages[resource] = requiredAmount - producedAmount;
         }
     }
 
     // 4. 使用二选一资源抵扣
-    auto wildcards = player.getWildcardResources();
+    auto wildcards = player.get_wildcard_resources();
     for (const auto& options : wildcards) {
         for (Resource res : options) {
             if (shortages[res] > 0) {
@@ -83,7 +83,7 @@ CostCalculator::BuildCostResult CostCalculator::calculateBuildCost(
     }
 
     // 6. 检查金币
-    if (player.getCoins() < result.totalCoinCost) {
+    if (player.get_coins() < result.totalCoinCost) {
         result.canBuild = false;
     }
     return result;
@@ -105,7 +105,7 @@ bool CostCalculator::executeBuild(
     BuildCostResult result = calculateBuildCost(player, opponent, card);
     if (!result.canBuild) return false;
     if (result.totalCoinCost > 0) {
-        if (!player.spendCoins(result.totalCoinCost)) return false;
+        if (!player.spend_coins(result.totalCoinCost)) return false;
     }
     return true;
 }
