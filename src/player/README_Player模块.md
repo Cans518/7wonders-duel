@@ -22,17 +22,24 @@ Player player2("Bot", PlayerType::AI_RANDOM);
 ```
 
 ### 2. 资源管理
+在《七大奇迹：对决》中，资源代表**永久产出能力**，而不是可消耗的库存。
 ```cpp
-// 添加资源（建造褐色/灰色卡时调用）
+// 添加资源产出（建造褐色/灰色卡时调用）
 player.addResource(Resource::WOOD, 1);
-player.addResourceProducingCard(Resource::WOOD);  // 用于交易成本计算
+player.addResourceProducingCard(Resource::WOOD);  // 注册产出符号，用于对手计算交易成本
 
-// 检查资源
-int woodCount = player.getResource(Resource::WOOD);
-bool hasEnough = player.hasEnoughResource(Resource::WOOD, 2);
+// 添加二选一资源（如：林场提供 木头 或 石头）
+player.addWildcardResource({Resource::WOOD, Resource::STONE});
+
+// 添加贸易折扣（黄色卡效果：购买该资源固定为 1 金币）
+player.addTradingPost(Resource::WOOD);
+
+// 检查产出能力
+int woodProduction = player.getResource(Resource::WOOD);
 ```
 
 ### 3. 金币管理
+金币是游戏中唯一的消耗性经济资源。
 ```cpp
 // 获取金币
 int coins = player.getCoins();
@@ -40,64 +47,51 @@ int coins = player.getCoins();
 // 增加金币
 player.addCoins(3);
 
-// 消耗金币
+// 消耗金币（建造或购买资源时调用）
 if (player.spendCoins(5)) {
     // 成功消耗
 }
 ```
 
-### 4. 建造卡牌
+### 4. 建造卡牌（使用 CostCalculator）
 
-#### 4.1 检查连锁建造
+建造逻辑已完全移至 `CostCalculator`，它会自动处理连锁建造、资源产出、二选一资源和交易成本。
+
+#### 4.1 检查并执行建造
 ```cpp
-std::vector<std::string> chainPrereqs = {"Lumber Yard", "Quarry"};
-if (player.canBuildFreeByChain(chainPrereqs)) {
-    // 可以免费建造
-    player.addBuiltCard("Sawmill", Color::BROWN);
-}
-```
-
-#### 4.2 普通建造（使用 CostCalculator）
-```cpp
-std::map<Resource, int> cardCost = {
-    {Resource::WOOD, 2},
-    {Resource::COIN, 1}
-};
-
-// 方法1：检查是否能建造（考虑交易）
-if (CostCalculator::canAffordWithTrade(player, opponent, cardCost)) {
-    // 方法2：执行建造（自动计算交易成本并扣除资源/金币）
-    if (CostCalculator::executeBuild(player, opponent, cardCost)) {
-        player.addBuiltCard("Forum", Color::YELLOW);
-        std::cout << "建造成功！" << std::endl;
+// 假设有一张卡牌对象 card
+if (CostCalculator::canAffordWithTrade(player, opponent, card)) {
+    // 执行建造：自动扣除金币（含卡牌成本和交易费）
+    // 注意：资源是永久产出，不会被扣除
+    if (CostCalculator::executeBuild(player, opponent, card)) {
+        player.addBuiltCard(card.name, card.color);
+        // 如果是资源卡，还需调用 player.addResource 等
     }
 }
 ```
 
-#### 4.3 详细成本计算
+#### 4.2 详细成本分析
 ```cpp
-auto result = CostCalculator::calculateBuildCost(player, opponent, cardCost);
+auto result = CostCalculator::calculateBuildCost(player, opponent, card);
 
-if (result.canBuild) {
+if (result.isFreeByChain) {
+    std::cout << "通过连锁建造免费！" << std::endl;
+} else if (result.canBuild) {
     std::cout << "总金币成本: " << result.totalCoinCost << std::endl;
-    
-    for (const auto& [resource, amount] : result.resourcesToBuy) {
-        std::cout << "需要购买: " << amount << " 个资源" << std::endl;
-    }
+    // result.resourcesToBuy 包含了需要从对手购买的资源清单
 }
 ```
 
 ### 5. 交易系统
 
 #### 交易成本计算规则
-购买资源费用 = **2 + 对手拥有该类褐色/灰色卡数量**
+1. 如果玩家拥有该资源的**贸易折扣**（黄色卡）：成本 = **1 金币**。
+2. 否则：成本 = **2 + 对手拥有该类资源的产出符号数量**。
 
 ```cpp
-// 示例：玩家1想从玩家2购买木头
-// 玩家2有 3 张木头产出卡
-opponent.addResourceProducingCard(Resource::WOOD);
-opponent.addResourceProducingCard(Resource::WOOD);
-opponent.addResourceProducingCard(Resource::WOOD);
+// 内部逻辑示例
+int cost = CostCalculator::calculateTradeCost(player, opponent, Resource::WOOD);
+```
 
 // 计算交易成本
 int cost = CostCalculator::calculateTradeCost(player, opponent, Resource::WOOD);
@@ -285,12 +279,6 @@ void testChainBuilding() {
 
 ## 常见问题
 
-### Q: 为什么有 Player_new.h 和 Player.h 两个文件？
-A: `Player_new.h` 是完整重写的版本，包含所有必需功能。你需要将其重命名为 `Player.h` 替换旧文件。
-
-### Q: ResourceType 和 Resource 有什么区别？
-A: 旧代码使用 `ResourceType`，新代码统一使用 `Resource`（与 Card.h 一致）。请使用新代码。
-
 ### Q: 如何处理黄卡的特殊资源产出？
 A: 在建造黄卡时，根据卡牌效果调用 `addResource()` 或 `addResourceProducingCard()`。
 
@@ -305,11 +293,10 @@ A: 当前简化为收集6个不同符号。完整实现需要维护每种符号�
 4. **日志系统**：添加操作日志，方便调试和显示
 5. **存档/读档**：支持游戏状态序列化
 
-## 联系与协作
 
 本模块（成员3）需要与以下模块协作：
 - **成员1**：提供 Game 类接口，调用 Player 和 CostCalculator
 - **成员2**：提供 Card 类定义，确保 Resource 枚举一致
 - **成员4**：提供 View 和 Controller，展示玩家状态和处理输入
 
-如有问题，请及时沟通！
+

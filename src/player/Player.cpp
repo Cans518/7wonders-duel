@@ -21,12 +21,16 @@ int Player::getResource(Resource resource) const {
     return it != resources.end() ? it->second : 0;
 }
 
-bool Player::spendResource(Resource resource, int amount) {
-    if (getResource(resource) < amount) {
-        return false;  // 资源不足
-    }
-    resources[resource] -= amount;
-    return true;
+bool Player::hasTradingPost(Resource resource) const {
+    return tradingPosts.count(resource) > 0;
+}
+
+void Player::addTradingPost(Resource resource) {
+    tradingPosts.insert(resource);
+}
+
+void Player::addWildcardResource(const std::set<Resource>& options) {
+    wildcardResources.push_back(options);
 }
 
 bool Player::hasEnoughResource(Resource resource, int amount) const {
@@ -84,51 +88,7 @@ int Player::getResourceProducingCardCount(Resource resource) const {
     return it != resourceProducingCards.end() ? it->second : 0;
 }
 
-// 建造逻辑 
-
-bool Player::canAffordCard(const std::map<Resource, int>& cost) const {
-    // 检查玩家是否拥有足够资源建造卡牌（不考虑交易）
-    for (const auto& [resource, amount] : cost) {
-        if (resource == Resource::COIN) {
-            if (coins < amount) return false;
-        } else {
-            if (getResource(resource) < amount) return false;
-        }
-    }
-    return true;
-}
-
-bool Player::canBuildFreeByChain(const std::vector<std::string>& chainPrerequisites) const {
-    // 检查是否满足连锁建造条件（拥有任意一个前置建筑即可）
-    if (chainPrerequisites.empty()) return false;
-    
-    for (const auto& prerequisite : chainPrerequisites) {
-        if (hasBuilding(prerequisite)) {
-            return true;  // 满足连锁条件，可以免费建造
-        }
-    }
-    return false;
-}
-
-bool Player::buildCard(const std::map<Resource, int>& cost) {
-    // 先检查是否能支付
-    if (!canAffordCard(cost)) {
-        return false;
-    }
-    
-    // 扣除资源和金币
-    for (const auto& [resource, amount] : cost) {
-        if (resource == Resource::COIN) {
-            spendCoins(amount);
-        } else {
-            spendResource(resource, amount);
-        }
-    }
-    
-    return true;
-}
-
-//军事 
+// 军事 
 
 void Player::addMilitaryTokens(int amount) {
     militaryTokens += amount;
