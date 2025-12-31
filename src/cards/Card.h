@@ -6,7 +6,15 @@
 #include <memory>
 
 enum class Color { BROWN, GREY, BLUE, YELLOW, RED, GREEN, PURPLE };
-enum class Resource { WOOD, BRICK, ORE, STONE, GLASS, CLOTH, PAPYRUS, SHIELD, SCIENCE_COMPASS, SCIENCE_GEAR, SCIENCE_TABLET, COIN, VP };
+enum class Resource { 
+    WOOD, CLAY, STONE, 
+    GLASS, PAPYRUS, 
+    SHIELD, 
+    SCIENCE_COMPASS, SCIENCE_WHEEL, SCIENCE_TABLET, 
+    SCIENCE_MORTAR, SCIENCE_PROTRACTOR, SCIENCE_SUNDIAL,
+    SCIENCE_LAW,
+    COIN, VP 
+};
 
 class Player;  // 前向声明
 class Game;    // 前向声明

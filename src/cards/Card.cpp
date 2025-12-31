@@ -18,18 +18,12 @@ std::vector<std::unique_ptr<Card>> createAllCards() {
     // 时代 I 卡牌 (49 张)
     // 棕色 (基本原料)
     cards.push_back(std::make_unique<Card>("Lumber Yard", 1, Color::BROWN, {}, {}, "", [&](Player& s, Game& g) { s.add_resource(Resource::WOOD, 1); }));
-    cards.push_back(std::make_unique<Card>("Ore Vein", 1, Color::BROWN, {}, {}, "", [&](Player& s, Game& g) { s.add_resource(Resource::ORE, 1); }));
-    cards.push_back(std::make_unique<Card>("Clay Pool", 1, Color::BROWN, {}, {}, "", [&](Player& s, Game& g) { s.add_resource(Resource::BRICK, 1); }));
     cards.push_back(std::make_unique<Card>("Stone Pit", 1, Color::BROWN, {}, {}, "", [&](Player& s, Game& g) { s.add_resource(Resource::STONE, 1); }));
-    cards.push_back(std::make_unique<Card>("Timber Yard", 1, Color::BROWN, {{Resource::COIN, 1}}, {}, "", [&](Player& s, Game& g) { s.add_resource_choice({Resource::WOOD, Resource::STONE}, 1); }));
-    cards.push_back(std::make_unique<Card>("Clay Pit", 1, Color::BROWN, {{Resource::COIN, 1}}, {}, "", [&](Player& s, Game& g) { s.add_resource_choice({Resource::BRICK, Resource::ORE}, 1); }));
-    cards.push_back(std::make_unique<Card>("Excavation", 1, Color::BROWN, {{Resource::COIN, 1}}, {}, "", [&](Player& s, Game& g) { s.add_resource_choice({Resource::STONE, Resource::BRICK}, 1); }));
-    cards.push_back(std::make_unique<Card>("Forest Cave", 1, Color::BROWN, {{Resource::COIN, 1}}, {}, "", [&](Player& s, Game& g) { s.add_resource_choice({Resource::WOOD, Resource::ORE}, 1); }));
-    cards.push_back(std::make_unique<Card>("Tree Farm", 1, Color::BROWN, {{Resource::COIN, 1}}, {}, "", [&](Player& s, Game& g) { s.add_resource_choice({Resource::WOOD, Resource::BRICK}, 1); }));
-    cards.push_back(std::make_unique<Card>("Mine", 1, Color::BROWN, {{Resource::COIN, 1}}, {}, "", [&](Player& s, Game& g) { s.add_resource_choice({Resource::ORE, Resource::STONE}, 1); }));
+    cards.push_back(std::make_unique<Card>("Clay Pool", 1, Color::BROWN, {}, {}, "", [&](Player& s, Game& g) { s.add_resource(Resource::CLAY, 1); }));
+    cards.push_back(std::make_unique<Card>("Timber Yard", 1, Color::BROWN, {{Resource::COIN, 1}}, {}, "", [&](Player& s, Game& g) { s.add_wildcard_resource({Resource::WOOD, Resource::STONE}); }));
+    cards.push_back(std::make_unique<Card>("Clay Pit", 1, Color::BROWN, {{Resource::COIN, 1}}, {}, "", [&](Player& s, Game& g) { s.add_wildcard_resource({Resource::CLAY, Resource::STONE}); }));
 
     // 灰色 (手工艺品)
-    cards.push_back(std::make_unique<Card>("Loom", 1, Color::GREY, {}, {}, "", [&](Player& s, Game& g) { s.add_resource(Resource::CLOTH, 1); }));
     cards.push_back(std::make_unique<Card>("Glassworks", 1, Color::GREY, {}, {}, "", [&](Player& s, Game& g) { s.add_resource(Resource::GLASS, 1); }));
     cards.push_back(std::make_unique<Card>("Press", 1, Color::GREY, {}, {}, "", [&](Player& s, Game& g) { s.add_resource(Resource::PAPYRUS, 1); }));
 

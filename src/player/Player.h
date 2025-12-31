@@ -10,12 +10,13 @@
 // 前向声明
 class Card;
 
-// 直接使用 Card.h 中的 Resource 和 Color 枚举
 enum class Resource { 
-    WOOD, BRICK, ORE, STONE,           // 褐色资源
-    GLASS, CLOTH, PAPYRUS,             // 灰色资源
+    WOOD, CLAY, STONE,                 // 褐色资源
+    GLASS, PAPYRUS,                    // 灰色资源
     SHIELD,                             // 军事
-    SCIENCE_COMPASS, SCIENCE_GEAR, SCIENCE_TABLET,  // 科技符号
+    SCIENCE_COMPASS, SCIENCE_WHEEL, SCIENCE_TABLET, 
+    SCIENCE_MORTAR, SCIENCE_PROTRACTOR, SCIENCE_SUNDIAL,
+    SCIENCE_LAW,                        // 科技符号
     COIN, VP                            // 金币和胜利点
 };
 
@@ -30,7 +31,7 @@ enum class PlayerType {
 /**
  * Player 类：管理玩家的资源、金币、已建造卡牌等状态
  * 核心功能：
- * 1. 资源管理：木头、砖块、矿石、石头、玻璃、布料、纸莎草
+ * 1. 资源管理：木头、粘土、石头、玻璃、纸莎草
  * 2. 金币管理：初始7个金币，用于购买资源和卡牌
  * 3. 交易系统：购买资源费用 = 2 + 对手拥有该类褐色/灰色卡数量
  * 4. 连锁建造：拥有前置建筑可以免费建造某些卡牌
