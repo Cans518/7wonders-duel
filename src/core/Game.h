@@ -26,6 +26,8 @@ private:
     int currentPlayerIdx;
     bool isGameOver;
     bool extraTurnTriggered; // 用于某些奇迹提供的“连续行动”效果
+    std::vector<std::unique_ptr<Card>> discardPile; // 弃牌堆
+    std::vector<ProgressToken> progressTokenPool;   // 进展标记池（需定义 ProgressToken 枚举或类）
 
 public:
     // 4. 单例获取接口
@@ -61,8 +63,10 @@ public:
     int getCurrentAge() const { return currentAge; }
     void setIsGameOver(bool status) { isGameOver = status; }
     void setExtraTurn(bool status) { extraTurnTriggered = status; }
-
     void movePawn(int steps); // 执行军事推进，steps 永远为正，方向由函数内部根据当前玩家判断
+    void check_science_victory(Player& p);
+    std::vector<ProgressToken> drawRandomProgressTokens(int count);
+    std::vector<Card*> getDiscardPile(); // 返回原始指针供查看，不转移所有权
 
     // 析构函数（单例清理）
     ~Game() = default;

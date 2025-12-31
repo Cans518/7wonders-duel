@@ -4,7 +4,7 @@
 // 辅助函数：判断资源是否为可交易资源（褐色或灰色）
 bool CostCalculator::isTradableResource(Resource resource) {
     return resource == Resource::WOOD || 
-           resource == Resource::BRICK || 
+           resource == Resource::CLAY || 
            resource == Resource::ORE || 
            resource == Resource::STONE ||
            resource == Resource::GLASS || 

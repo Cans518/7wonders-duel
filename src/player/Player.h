@@ -12,7 +12,7 @@ class Card;
 
 // 直接使用 Card.h 中的 Resource 和 Color 枚举
 enum class Resource { 
-    WOOD, BRICK, ORE, STONE,           // 褐色资源
+    WOOD, BRICK, ORE, STONE, CLAY,         // 褐色资源
     GLASS, CLOTH, PAPYRUS,             // 灰色资源
     SHIELD,                             // 军事
     SCIENCE_COMPASS, SCIENCE_GEAR, SCIENCE_TABLET,  // 科技符号

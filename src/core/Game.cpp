@@ -34,7 +34,7 @@ void Game::init() {
 
     // 初始金币：根据规则通常是7元
     for(auto& p : players) {
-        p->addCoins(7); 
+        p->add_coins(7); 
     }
 
     // 初始化第一时代卡牌布局 (Member 2 需要提供 createAllCards 逻辑)
@@ -46,84 +46,63 @@ void Game::init() {
 
 // 核心动作 1：购买/建造卡牌
 bool Game::takeCard(int pos, Player& player) {
-    try {
-        // 1. 从卡牌结构中尝试取牌（处理 pos 校验逻辑由 cardStructure 内部负责）
+        // 1. 尝试从结构中移除并获取卡牌
         std::unique_ptr<Card> card = cardStructure->takeCard(pos);
         if (!card) return false;
 
-        // 2. 检查建造资格与成本支付
-        // 优先检查是否有“连锁建筑”提供的免费建造机会
-        bool isFree = player.canBuildFreeByChain(card->chain_prerequisites);
-        
-        if (!isFree) {
-            // 调用 Member 3 的成本计算器
-            // 注意：此处 result.totalCoinCost 已包含资源购买费和卡牌基础费
-            auto result = CostCalculator::calculateBuildCost(player, *getOpponent(), card->cost);
-            
-            if (!result.canBuild) {
-                // 如果钱不够，将卡牌还回结构（或报错），此处视底层实现而定
-                std::cout << "Cannot afford card: " << card->name << std::endl;
-                return false; 
-            }
-            
-            player.spendCoins(result.totalCoinCost);
+        // 2. 利用 Member 3 提供的 executeBuild 直接处理支付逻辑
+        // 它内部已经调用了 calculateBuildCost 和 player.spend_coins
+        if (!CostCalculator::executeBuild(player, *getOpponent(), *card)) {
+            // 如果买不起，把牌还回去（或者告知非法操作）
+            // 注意：如果你从 cardStructure 拿走时已经删除了，这里需要更复杂的处理
+            return false;
         }
 
-        // 3. 应用卡牌即时效果 (核心逻辑！)
-        // 这里的 Lambda 会调用 player.addCoins, game.movePawn 等
-        if (card->effect) {
-            card->effect(player, *this);
-        }
+        // 3. 执行 Member 2 的 Lambda 效果
+        card->apply_effect(player, *this);
 
-        // 4. 记录卡牌到玩家名下并登记产出
-        player.addBuiltCard(card->name, card->color);
-        
-        // 规则：棕卡和灰卡提供永久资源产出，用于后续买牌的成本抵扣
-        if (card->color == Color::BROWN || card->color == Color::GREY) {
-            // 假设 Member 2 的 Card 类有一个成员 std::vector<Resource> producedResources
-            for (auto res : card->producedResources) {
-                player.addResourceProducingCard(res);
-            }
-        }
+        // 4. 登记卡牌
+        player.add_built_card(card->name, card->color);
 
-        // 5. 检查是否因为此牌的效果（如军事或科技）导致游戏立即结束
+
+        // 胜利检查：双重保险
+        // 检查点 1：检查 Lambda 是否已经触发了胜利 (如科技 6 种)
+        if (isGameOver) return true; 
+
+        // 检查点 2：手动触发一次全局压制检查 (防止 Member 2 漏写)
         if (checkSupremacyVictory()) {
             isGameOver = true;
             return true;
         }
 
-        // 6. 切换回合逻辑
+        // 6. 回合切换
         if (!extraTurnTriggered) {
             currentPlayerIdx = (currentPlayerIdx + 1) % 2;
         } else {
-            std::cout << "[Game] Extra turn triggered for " << player.getName() << "!" << std::endl;
-            extraTurnTriggered = false; // 使用后重置
+            std::cout << "[Game] Extra turn for " << player.get_name() << "!" << std::endl;
+            extraTurnTriggered = false; 
         }
-
         return true;
-
-    } catch (const std::exception& e) {
-        std::cerr << "[Game Error] Action failed at pos " << pos << ": " << e.what() << std::endl;
-        return false;
-    }
-}
+    } 
 
 // 核心动作 2：弃牌换钱
 void Game::discardForCoins(int pos, Player& player) {
     try {
         std::unique_ptr<Card> card = cardStructure->takeCard(pos);
-        // 规则：2元 + 玩家拥有的每张黄卡额外1元
-        int coins = 2 + player.countYellowCards(); 
-        player.addCoins(coins);
+        if (!card) return;
+
+        int coins = 2 + player.count_yellow_cards(); 
+        player.add_coins(coins);
         
-        std::cout << player.getName() << " discarded " << card->name << " and earned " << coins << " coins." << std::endl;
+        // --- 关键修改：将弃掉的牌存入弃牌堆 ---
+        discardPile.push_back(std::move(card));
         
-        // 弃牌从不触发额外回合
+        std::cout << player.get_name() << " discarded card for " << coins << " coins." << std::endl;
+        
         currentPlayerIdx = (currentPlayerIdx + 1) % 2;
         extraTurnTriggered = false; 
     } catch (...) {}
 }
-
 // 核心动作 3：建造奇迹
 void Game::buildWonder(int wonderIdx, int pos, Player& player) {
     // TODO: 实现奇迹建造逻辑
@@ -156,7 +135,7 @@ void Game::run() {
 
 void Game::playTurn(Controller& controller) { 
     Player* curr = getCurrentPlayer();
-    std::cout << "\n--- " << curr->getName() << "'s Turn ---" << std::endl;
+    std::cout << "\n--- " << curr->get_name() << "'s Turn ---" << std::endl;
     
     // 委托给 Controller 处理 UI 和输入
     controller.player_turn(*curr); 
@@ -170,7 +149,7 @@ bool Game::checkSupremacyVictory() {
     }
     
     // 2. 科技压制：收集 6 种不同的科技符号
-    if (getCurrentPlayer()->getUniqueScienceCount() >= 6) {
+    if (getCurrentPlayer()->get_unique_science_count() >= 6) {
         std::cout << "Scientific Supremacy Victory!" << std::endl;
         return true;
     }
@@ -216,4 +195,35 @@ void Game::movePawn(int steps) {
         isGameOver = true;
         std::cout << "--- MILITARY SUPREMACY! Game Over ---" << std::endl;
     }
+}
+
+// 对应 Player::get_unique_science_count
+bool Game::checkSupremacyVictory() {
+    // 1. 军事
+    if (board->getPawnPosition() <= 0 || board->getPawnPosition() >= 18) return true;
+    
+    // 2. 科技：对齐 get_unique_science_count
+    if (getCurrentPlayer()->get_unique_science_count() >= 6) return true;
+    
+    return false;
+}
+
+// 1. 科技胜利检查：对应 Member 2 的 g.check_science_victory(s)
+void Game::check_science_victory(Player& p) {
+    // 对应你的 Player.h 中的 get_unique_science_count
+    if (p.get_unique_science_count() >= 6) {
+        isGameOver = true;
+        std::cout << "--- 科技压制胜利！ " << p.get_name() << " 赢得了比赛 ---" << std::endl;
+    }
+}
+
+// 进展标记随机抽取
+std::vector<ProgressToken> Game::drawRandomProgressTokens(int count) {
+    std::vector<ProgressToken> drawn;
+    // 这里简单实现：如果池子里有就给
+    for(int i=0; i<count && !progressTokenPool.empty(); ++i) {
+        drawn.push_back(progressTokenPool.back());
+        progressTokenPool.pop_back();
+    }
+    return drawn;
 }

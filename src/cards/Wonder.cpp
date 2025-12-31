@@ -12,9 +12,9 @@ std::vector<Wonder> createAllWonders() {
     wonders.emplace_back("The Appian Way",
         std::map<Resource, int>{{Resource::STONE, 2}, {Resource::CLAY, 1}, {Resource::WOOD, 1}},
         [](Player& s, Player& o, Game& g) {
-            o.addCoins(-3);
+            o.add_coins(-3);
             g.setExtraTurn(true);
-            s.addVictoryPoints(3);
+            s.add_victory_points(3);
         });
 
     // Circus Maximus
@@ -23,7 +23,7 @@ std::vector<Wonder> createAllWonders() {
         [](Player& s, Player& o, Game& g) {
             o.destroyCardByColor(Color::GREY); // 需要在Player实现此方法
             g.movePawn(1);
-            s.addVictoryPoints(3);
+            s.add_victory_points(3);
         });
 
     // The Colossus
@@ -31,7 +31,7 @@ std::vector<Wonder> createAllWonders() {
         std::map<Resource, int>{{Resource::CLAY, 3}, {Resource::WOOD, 2}},
         [](Player& s, Player& o, Game& g) {
             g.movePawn(2);
-            s.addVictoryPoints(3);
+            s.add_victory_points(3);
         });
 
     // The Great Library
@@ -40,7 +40,7 @@ std::vector<Wonder> createAllWonders() {
         [](Player& s, Player& o, Game& g) {
             // 逻辑建议：触发游戏流程让玩家从3个标记中选一个
             g.triggerProgressTokenSelection(s, 3);
-            s.addVictoryPoints(4);
+            s.add_victory_points(4);
         });
 
     // The Great Lighthouse
@@ -48,16 +48,16 @@ std::vector<Wonder> createAllWonders() {
         std::map<Resource, int>{{Resource::STONE, 2}, {Resource::WOOD, 1}},
         [](Player& s, Player& o, Game& g) {
             s.add_resource_choice({Resource::STONE, Resource::CLAY, Resource::WOOD});
-            s.addVictoryPoints(4);
+            s.add_victory_points(4);
         });
 
     // The Hanging Gardens
     wonders.emplace_back("The Hanging Gardens",
         std::map<Resource, int>{{Resource::STONE, 1}, {Resource::CLAY, 2}},
         [](Player& s, Player& o, Game& g) {
-            s.addCoins(6);
+            s.add_coins(6);
             g.setExtraTurn(true);
-            s.addVictoryPoints(3);
+            s.add_victory_points(3);
         });
 
     // The Mausoleum
@@ -65,7 +65,7 @@ std::vector<Wonder> createAllWonders() {
         std::map<Resource, int>{{Resource::CLAY, 2}, {Resource::GLASS, 1}, {Resource::PAPYRUS, 1}},
         [](Player& s, Player& o, Game& g) {
             g.triggerBuildFromDiscard(s); // 需要在Game实现从弃牌堆建造逻辑
-            s.addVictoryPoints(2);
+            s.add_victory_points(2);
         });
 
     // Piraeus
@@ -74,14 +74,14 @@ std::vector<Wonder> createAllWonders() {
         [](Player& s, Player& o, Game& g) {
             s.add_resource_choice({Resource::GLASS, Resource::PAPYRUS});
             g.setExtraTurn(true);
-            s.addVictoryPoints(2);
+            s.add_victory_points(2);
         });
 
     // The Pyramids
     wonders.emplace_back("The Pyramids",
         std::map<Resource, int>{{Resource::STONE, 3}, {Resource::WOOD, 2}},
         [](Player& s, Player& o, Game& g) {
-            s.addVictoryPoints(9);
+            s.add_victory_points(9);
         });
 
     // The Sphinx
@@ -89,7 +89,7 @@ std::vector<Wonder> createAllWonders() {
         std::map<Resource, int>{{Resource::CLAY, 1}, {Resource::GLASS, 1}},
         [](Player& s, Player& o, Game& g) {
             g.setExtraTurn(true);
-            s.addVictoryPoints(6);
+            s.add_victory_points(6);
         });
 
     // The Statue of Zeus
@@ -98,14 +98,14 @@ std::vector<Wonder> createAllWonders() {
         [](Player& s, Player& o, Game& g) {
             o.destroyCardByColor(Color::BROWN);
             g.movePawn(1);
-            s.addVictoryPoints(3);
+            s.add_victory_points(3);
         });
 
     // The Temple of Artemis
     wonders.emplace_back("The Temple of Artemis",
         std::map<Resource, int>{{Resource::STONE, 1}, {Resource::WOOD, 1}, {Resource::PAPYRUS, 1}},
         [](Player& s, Player& o, Game& g) {
-            s.addCoins(12);
+            s.add_coins(12);
             g.setExtraTurn(true);
         });
 
