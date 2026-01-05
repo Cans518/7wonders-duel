@@ -1,55 +1,59 @@
-#pragma once
+#ifndef CARD_H
+#define CARD_H
 
+#include "Types.h"
 #include <string>
 #include <vector>
 #include <map>
 #include <functional>
 #include <memory>
 
-// 前向声明，减少头文件相互依赖
 class Player;
 class Game;
 
-// 统一颜色枚举
-enum class Color { BROWN, GREY, BLUE, YELLOW, RED, GREEN, PURPLE };
-
-// 统一资源枚举（涵盖了你代码中出现的所有类型）
-enum class Resource {
-    WOOD, STONE, CLAY, ORE, BRICK,
-    PAPYRUS, GLASS, CLOTH,
-    COIN,
-    SCIENCE_GEAR, SCIENCE_COMPASS, SCIENCE_TABLET
-};
-
-// 补齐进展标记定义，确保 Game 逻辑完整
-enum class ProgressToken {
-    P_AGRICULTURE, P_ARCHITECTURE, P_ECONOMY, P_LAW, P_MASONRY,
-    P_MATHEMATICS, P_PHILOSOPHY, P_STRATEGY, P_THEOLOGY, P_URBANISM
-};
-
 class Card {
 public:
-    // 定义效果函数的类型：接受玩家引用和游戏逻辑引用
     using CardEffect = std::function<void(Player&, Game&)>;
 
-    // 成员变量
+    // --- 结构体：特殊奖励 (用于黄色/紫色卡) ---
+    struct SpecialReward {
+        bool active;
+        Color target_color;   // 关联哪种颜色的牌
+        int coins_per_card;   // 建造时即时给的钱
+        int vp_per_card;      // 游戏结束给的分
+        bool count_wonders;   // 是否关联奇迹数量
+        bool count_both;      // 是否计算双方玩家的牌 (针对公会)
+
+        SpecialReward() : active(false), target_color(Color::BROWN), coins_per_card(0), vp_per_card(0), count_wonders(false), count_both(false) {}
+        SpecialReward(bool a, Color c, int coins, int vp, bool wonders, bool both = false)
+            : active(a), target_color(c), coins_per_card(coins), vp_per_card(vp), count_wonders(wonders), count_both(both) {}
+    };
+
+    // --- 基础属性 ---
     std::string name;
     int age;
     Color color;
     std::map<Resource, int> cost;
-    std::vector<std::string> chain_prerequisites; // 免费建造的前置卡牌名
-    std::string chain_provides;                  // 本卡提供的免费建造符号
-    bool is_face_up;                             // 在金字塔布局中是否翻开
-    CardEffect effect;                           // Lambda 存储
+    
+    // --- 结构化效果 ---
+    int victory_points = 0;
+    int shields = 0;
+    Resource science_symbol = Resource::COIN; // 若非科技牌则为 COIN
 
-    // 构造函数
-    Card(std::string n, int a, Color c, std::map<Resource, int> co,
-         std::vector<std::string> pre, std::string pro, CardEffect eff);
+    // --- 连锁系统 ---
+    LinkSymbol link_prerequisite = LinkSymbol::NONE; 
+    LinkSymbol link_provides = LinkSymbol::NONE;     
 
-    // 逻辑函数
-    bool can_build_free(const Player& player) const;
-    void apply_effect(Player& player, Game& game);
+    SpecialReward special_reward;
+    CardEffect immediate_func; // 用于处理 Reserve 或产出资源等逻辑
+    bool is_face_up = false;
+
+    Card(std::string n, int a, Color c);
+
+    bool can_be_free(const Player& p) const;
+    void apply_effect(Player& p, Game& g) const;
 };
 
-// 工厂函数：创建当前游戏所有的卡牌池
 std::vector<std::unique_ptr<Card>> createAllCards();
+
+#endif

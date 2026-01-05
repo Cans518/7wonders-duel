@@ -1,26 +1,36 @@
-#pragma once
+#ifndef WONDER_H
+#define WONDER_H
 
 #include <string>
 #include <map>
 #include <vector>
 #include <functional>
-// 确保 Resource 枚举在 Player.h 或某处已定义
-#include "../player/Player.h"
+#include "Types.h"
 
-class Game; // 前向声明
+// 前向声明
+class Player;
+class Game;
 
 class Wonder {
 public:
-    // 定义别名使代码更整洁
+    // 定义奇迹特殊效果的 Lambda 类型：(自己, 对手, 游戏实例)
     using WonderEffect = std::function<void(Player& self, Player& opponent, Game& game)>;
 
     std::string name;
     std::map<Resource, int> cost;
+    
+    // 结构化数据 (参考规则书 P17)
+    int victory_points = 0;
+    int shields = 0;
+    bool is_built = false;
+
+    // 存储特殊逻辑 (如“再来一回合”、“拆牌”、“选择进展标记”)
     WonderEffect effect;
 
-    // 修改 auto 为明确的 std::function 类型
-    Wonder(std::string n, std::map<Resource, int> co, WonderEffect eff);
+    Wonder(std::string n, std::map<Resource, int> co, WonderEffect eff = nullptr);
 };
 
-// 声明工厂函数
+// 工厂函数：创建对决版全部 12 张奇迹卡
 std::vector<Wonder> createAllWonders();
+
+#endif

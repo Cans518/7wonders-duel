@@ -45,3 +45,9 @@ build/
 cmake-build-*/
 CMakeCache.txt
 CMakeFiles/
+
+
+build/*
+*/.idea/*
+*.cmake
+.vscode/*

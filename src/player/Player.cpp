@@ -1,141 +1,155 @@
 #include "Player.h"
 #include <algorithm>
+#include <iostream>
+#include <stdexcept>
 
-// 构造函数
-
+// --- 构造函数 ---
+// 初始化所有基础数值，确保不产生随机垃圾值
 Player::Player(const std::string& playerName, PlayerType playerType) 
-    : name(playerName), type(playerType), coins(7), militaryTokens(0), victoryPoints(0) {
+    : name(playerName), type(playerType), coins(7), 
+      military_tokens(0), victory_points(0), built_wonders_count(0) {
 }
 
-// 资源管理 
+// --- 经济管理 ---
 
-void Player::add_resource(Resource resource, int amount) {
-    if (amount > 0) {
-        resources[resource] += amount;
-    }
-}
-
-int Player::get_resource(Resource resource) const {
-    auto it = resources.find(resource);
-    return it != resources.end() ? it->second : 0;
-}
-
-bool Player::has_trading_post(Resource resource) const {
-    return tradingPosts.count(resource) > 0;
-}
-
-void Player::add_trading_post(Resource resource) {
-    tradingPosts.insert(resource);
-}
-
-void Player::add_wildcard_resource(const std::set<Resource>& options) {
-    wildcardResources.push_back(options);
-}
-
-bool Player::has_enough_resource(Resource resource, int amount) const {
-    return get_resource(resource) >= amount;
-}
-
-// 金币管理 
-
-int Player::get_coins() const {
-    return coins;
+void Player::add_coins(int amount) {
+    // 允许传入负数进行扣款，并确保余额不会低于 0（规则书 P14 保护逻辑）
+    coins += amount;
+    if (coins < 0) coins = 0; 
 }
 
 bool Player::spend_coins(int amount) {
-    if (coins < amount) {
-        return false;
-    }
+    if (coins < amount) return false;
     coins -= amount;
     return true;
 }
 
-void Player::add_coins(int amount) {
-    if (amount > 0) {
-        coins += amount;
+// --- 资源产出与交易逻辑 ---
+
+void Player::add_resource(Resource res, int amount) {
+    if (amount > 0) resources[res] += amount;
+}
+
+int Player::get_resource(Resource res) const {
+    // 严禁使用 resources[res]，因为它会在 key 不存在时插入新条目
+    auto it = resources.find(res);
+    if (it != resources.end()) {
+        return it->second;
+    }
+    return 0;
+}
+
+void Player::add_resource_choice(const std::set<Resource>& options) {
+    if (!options.empty()) {
+        wildcard_resources.push_back(options);
     }
 }
 
-// 卡牌管理 
+void Player::set_fixed_trade_cost(Resource res, int cost) {
+    fixed_trade_costs[res] = cost;
+}
+
+int Player::get_trade_cost(Resource res) const {
+    // 如果玩家拥有对应的黄色“储备卡”，该资源的交易基础费固定为 1（规则书 P8）
+    auto it = fixed_trade_costs.find(res);
+    if (it != fixed_trade_costs.end()) {
+        return it->second;
+    }
+    return 2; // 默认规则：基础费为 2
+}
+
+// --- 卡牌管理与统计 ---
 
 void Player::add_built_card(const std::string& cardName, Color cardColor) {
-    builtCards.push_back(cardName);
-    cardsByColor[cardColor]++;
+    built_card_names.push_back(cardName);
+    cards_by_color[cardColor]++;
 }
 
 bool Player::has_card(const std::string& cardName) const {
-    return std::find(builtCards.begin(), builtCards.end(), cardName) != builtCards.end();
-}
-
-const std::vector<std::string>& Player::get_built_cards() const {
-    return builtCards;
+    return std::find(built_card_names.begin(), built_card_names.end(), cardName) != built_card_names.end();
 }
 
 int Player::get_card_count_by_color(Color color) const {
-    auto it = cardsByColor.find(color);
-    return it != cardsByColor.end() ? it->second : 0;
+    auto it = cards_by_color.find(color);
+    if (it != cards_by_color.end()) {
+        return it->second;
+    }
+    return 0;
 }
 
-// 资源产出卡统计
+// 统计快捷函数实现 (用于时代 III / 公会卡关联计分)
+int Player::count_brown() const  { return get_card_count_by_color(Color::BROWN); }
+int Player::count_grey() const   { return get_card_count_by_color(Color::GREY); }
+int Player::count_yellow() const { return get_card_count_by_color(Color::YELLOW); }
+int Player::count_blue() const   { return get_card_count_by_color(Color::BLUE); }
+int Player::count_green() const  { return get_card_count_by_color(Color::GREEN); }
+int Player::count_red() const    { return get_card_count_by_color(Color::RED); }
+int Player::count_purple() const { return get_card_count_by_color(Color::PURPLE); }
 
-void Player::add_resource_producing_card(Resource resource) {
-    resourceProducingCards[resource]++;
+// --- 连锁符号逻辑 (Linking) ---
+
+void Player::add_chain_symbol(LinkSymbol symbol) {
+    if (symbol != LinkSymbol::NONE) {
+        owned_link_symbols.insert(symbol);
+    }
 }
 
-int Player::get_resource_producing_card_count(Resource resource) const {
-    auto it = resourceProducingCards.find(resource);
-    return it != resourceProducingCards.end() ? it->second : 0;
+bool Player::has_chain_symbol(LinkSymbol symbol) const {
+    return owned_link_symbols.count(symbol) > 0;
 }
 
-// 军事 
+// --- 奇迹管理 (彻底修复 undefined reference 报错) ---
 
-void Player::add_shield(int amount) {
-    militaryTokens += amount;
+void Player::add_wonder(const Wonder& w) {
+    wonders.push_back(w);
 }
 
-int Player::get_military_tokens() const {
-    return militaryTokens;
+// 补全 get_wonder 实现
+Wonder& Player::get_wonder(int idx) {
+    if (idx < 0 || idx >= (int)wonders.size()) {
+        throw std::out_of_range("Player::get_wonder - Index out of range");
+    }
+    return wonders[idx];
 }
 
-bool Player::has_military_victory() const {
-    return militaryTokens >= 9 || militaryTokens <= -9;
+int Player::count_wonder_stages() const {
+    return built_wonders_count;
 }
 
-//科技
+// 补全 increment_wonder_count 实现
+void Player::increment_wonder_count() {
+    built_wonders_count++;
+}
+
+// --- 科技、军事与特殊效果 ---
 
 void Player::add_science_symbol(Resource symbol) {
-    if (symbol == Resource::SCIENCE_COMPASS || 
-        symbol == Resource::SCIENCE_WHEEL || 
-        symbol == Resource::SCIENCE_TABLET ||
-        symbol == Resource::SCIENCE_MORTAR ||
-        symbol == Resource::SCIENCE_PROTRACTOR ||
-        symbol == Resource::SCIENCE_SUNDIAL ||
-        symbol == Resource::SCIENCE_LAW) {
-        scienceSymbols.insert(symbol);
+    // 判定是否属于科技符号区间 (COMPASS 到 LAW)
+    if (symbol >= Resource::COMPASS && symbol <= Resource::LAW) {
+        science_symbols.insert(symbol);
     }
 }
 
-const std::set<Resource>& Player::get_science_symbols() const {
-    return scienceSymbols;
+int Player::get_unique_science_count() const {
+    // 返回 set 的大小即为不同科技符号的数量 (规则书 P12)
+    return static_cast<int>(science_symbols.size());
 }
 
-bool Player::has_science_victory() const {
-    if (scienceSymbols.size() >= 6) {
-        return true;
+void Player::destroy_card_by_color(Color color) {
+    // 奇迹破坏效果：减少对手某色卡牌计数
+    auto it = cards_by_color.find(color);
+    if (it != cards_by_color.end() && it->second > 0) {
+        it->second--;
+        std::cout << "[Effect] " << name << " lost a card of color " << (int)color << std::endl;
     }
-    return false;
 }
 
-// 胜利点数 
-
-void Player::add_victory_points(int amount) {
-    victoryPoints += amount;
-}
-
-int Player::get_victory_points() const {
-    return victoryPoints;
-}
+// --- 最终结算 ---
 
 int Player::calculate_final_score() const {
-    return victoryPoints + (coins / 3);
+    // 1. 基础胜利点数 (来自蓝卡、绿卡、黄卡、红卡、奇迹的直接加分)
+    int total = victory_points;
+    // 2. 现金换分：每 3 元换 1 分 (规则书 P13)
+    total += (coins / 3);
+    return total;
 }
