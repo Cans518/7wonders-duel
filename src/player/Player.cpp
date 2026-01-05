@@ -105,8 +105,12 @@ bool Player::has_military_victory() const {
 
 void Player::add_science_symbol(Resource symbol) {
     if (symbol == Resource::SCIENCE_COMPASS || 
-        symbol == Resource::SCIENCE_GEAR || 
-        symbol == Resource::SCIENCE_TABLET) {
+        symbol == Resource::SCIENCE_WHEEL || 
+        symbol == Resource::SCIENCE_TABLET ||
+        symbol == Resource::SCIENCE_MORTAR ||
+        symbol == Resource::SCIENCE_PROTRACTOR ||
+        symbol == Resource::SCIENCE_SUNDIAL ||
+        symbol == Resource::SCIENCE_LAW) {
         scienceSymbols.insert(symbol);
     }
 }

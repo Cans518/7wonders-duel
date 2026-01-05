@@ -25,30 +25,30 @@ Player player2("Bot", PlayerType::AI_RANDOM);
 在《七大奇迹：对决》中，资源代表**永久产出能力**，而不是可消耗的库存。
 ```cpp
 // 添加资源产出（建造褐色/灰色卡时调用）
-player.addResource(Resource::WOOD, 1);
-player.addResourceProducingCard(Resource::WOOD);  // 注册产出符号，用于对手计算交易成本
+player.add_resource(Resource::CLAY, 1);
+player.add_resource_producing_card(Resource::CLAY);  // 注册产出符号，用于对手计算交易成本
 
 // 添加二选一资源（如：林场提供 木头 或 石头）
-player.addWildcardResource({Resource::WOOD, Resource::STONE});
+player.add_wildcard_resource({Resource::WOOD, Resource::STONE});
 
 // 添加贸易折扣（黄色卡效果：购买该资源固定为 1 金币）
-player.addTradingPost(Resource::WOOD);
+player.add_trading_post(Resource::WOOD);
 
 // 检查产出能力
-int woodProduction = player.getResource(Resource::WOOD);
+int woodProduction = player.get_resource(Resource::WOOD);
 ```
 
 ### 3. 金币管理
 金币是游戏中唯一的消耗性经济资源。
 ```cpp
 // 获取金币
-int coins = player.getCoins();
+int coins = player.get_coins();
 
 // 增加金币
-player.addCoins(3);
+player.add_coins(3);
 
 // 消耗金币（建造或购买资源时调用）
-if (player.spendCoins(5)) {
+if (player.spend_coins(5)) {
     // 成功消耗
 }
 ```
@@ -64,8 +64,8 @@ if (CostCalculator::canAffordWithTrade(player, opponent, card)) {
     // 执行建造：自动扣除金币（含卡牌成本和交易费）
     // 注意：资源是永久产出，不会被扣除
     if (CostCalculator::executeBuild(player, opponent, card)) {
-        player.addBuiltCard(card.name, card.color);
-        // 如果是资源卡，还需调用 player.addResource 等
+        player.add_built_card(card.name, card.color);
+        // 如果是资源卡，还需调用 player.add_resource 等
     }
 }
 ```
@@ -93,41 +93,36 @@ if (result.isFreeByChain) {
 int cost = CostCalculator::calculateTradeCost(player, opponent, Resource::WOOD);
 ```
 
-// 计算交易成本
-int cost = CostCalculator::calculateTradeCost(player, opponent, Resource::WOOD);
-// cost = 2 + 3 = 5 金币
-```
-
 ### 6. 军事系统
 ```cpp
 // 添加军事标记（己方前进）
-player.addMilitaryTokens(2);
+player.add_shield(2);
 
 // 检查军事胜利
-if (player.hasMilitaryVictory()) {
-    std::cout << player.getName() << " 军事获胜！" << std::endl;
+if (player.has_military_victory()) {
+    std::cout << player.get_name() << " 军事获胜！" << std::endl;
 }
 ```
 
 ### 7. 科技系统
 ```cpp
 // 添加科技符号
-player.addScienceSymbol(Resource::SCIENCE_COMPASS);
-player.addScienceSymbol(Resource::SCIENCE_GEAR);
+player.add_science_symbol(Resource::SCIENCE_COMPASS);
+player.add_science_symbol(Resource::SCIENCE_WHEEL);
 
 // 检查科技胜利
-if (player.hasScienceVictory()) {
-    std::cout << player.getName() << " 科技获胜！" << std::endl;
+if (player.has_science_victory()) {
+    std::cout << player.get_name() << " 科技获胜！" << std::endl;
 }
 ```
 
 ### 8. 胜利点数
 ```cpp
 // 添加胜利点数（蓝卡、紫卡等）
-player.addVictoryPoints(5);
+player.add_victory_points(5);
 
 // 计算最终得分（包括金币）
-int finalScore = player.calculateFinalScore();
+int finalScore = player.calculate_final_score();
 // finalScore = victoryPoints + coins/3
 ```
 
@@ -136,42 +131,42 @@ int finalScore = player.calculateFinalScore();
 ```cpp
 void buildCardExample(Player& player, Player& opponent, const Card& card) {
     // 1. 检查连锁建造
-    if (player.canBuildFreeByChain(card.chain_prerequisites)) {
+    if (player.has_card(card.name)) { // 简化逻辑，实际应检查 chain_prerequisites
         std::cout << "连锁建造，免费！" << std::endl;
-        player.addBuiltCard(card.name, card.color);
+        player.add_built_card(card.name, card.color);
         
         // 注册资源产出卡（如果是褐色/灰色卡）
         if (card.color == Color::BROWN || card.color == Color::GREY) {
             // 假设卡牌产出木头
-            player.addResourceProducingCard(Resource::WOOD);
+            player.add_resource_producing_card(Resource::WOOD);
         }
         
         return;
     }
     
     // 2. 检查是否能建造（考虑交易）
-    if (!CostCalculator::canAffordWithTrade(player, opponent, card.cost)) {
+    if (!CostCalculator::canAffordWithTrade(player, opponent, card)) {
         std::cout << "资源/金币不足，无法建造！" << std::endl;
         return;
     }
     
     // 3. 执行建造
-    if (CostCalculator::executeBuild(player, opponent, card.cost)) {
+    if (CostCalculator::executeBuild(player, opponent, card)) {
         std::cout << "建造成功：" << card.name << std::endl;
         
         // 4. 添加已建造卡牌
-        player.addBuiltCard(card.name, card.color);
+        player.add_built_card(card.name, card.color);
         
         // 5. 注册资源产出卡
         if (card.color == Color::BROWN || card.color == Color::GREY) {
             // 根据卡牌效果添加资源
-            player.addResourceProducingCard(Resource::WOOD);
+            player.add_resource_producing_card(Resource::WOOD);
         }
         
         // 6. 应用卡牌效果
-        if (card.effect) {
-            card.effect(player, game);
-        }
+        // if (card.effect) {
+        //     card.effect(player, game);
+        // }
     }
 }
 ```
@@ -188,7 +183,7 @@ card.cost = {}; // 免费
 card.chain_provides = "WOOD_SYMBOL";
 
 // Player 模块使用卡牌信息建造
-player.addBuiltCard(card.name, card.color);
+player.add_built_card(card.name, card.color);
 ```
 
 ### 与 Game 模块交互
@@ -210,17 +205,17 @@ class Game {
 ```cpp
 // View 模块显示玩家状态
 void displayPlayerStatus(const Player& player) {
-    std::cout << "玩家: " << player.getName() << std::endl;
-    std::cout << "金币: " << player.getCoins() << std::endl;
-    std::cout << "胜利点数: " << player.getVictoryPoints() << std::endl;
-    std::cout << "已建造卡牌数: " << player.getBuiltCards().size() << std::endl;
+    std::cout << "玩家: " << player.get_name() << std::endl;
+    std::cout << "金币: " << player.get_coins() << std::endl;
+    std::cout << "胜利点数: " << player.get_victory_points() << std::endl;
+    std::cout << "已建造卡牌数: " << player.get_built_cards().size() << std::endl;
 }
 
 // Controller 模块处理用户输入
 void handleBuildAction(Player& player, Player& opponent, const Card& card) {
-    if (CostCalculator::canAffordWithTrade(player, opponent, card.cost)) {
-        CostCalculator::executeBuild(player, opponent, card.cost);
-        player.addBuiltCard(card.name, card.color);
+    if (CostCalculator::canAffordWithTrade(player, opponent, card)) {
+        CostCalculator::executeBuild(player, opponent, card);
+        player.add_built_card(card.name, card.color);
     } else {
         std::cout << "无法建造此卡牌！" << std::endl;
     }
@@ -232,11 +227,11 @@ void handleBuildAction(Player& player, Player& opponent, const Card& card) {
 ### ✅ 已实现的规则
 1. **初始金币7个** - `Player()` 构造函数
 2. **交易成本计算** - `CostCalculator::calculateTradeCost()`
-3. **连锁建造** - `Player::canBuildFreeByChain()`
-4. **资源管理** - `addResource()`, `spendResource()`, `getResource()`
-5. **军事胜利** - `hasMilitaryVictory()`
-6. **科技胜利** - `hasScienceVictory()`
-7. **最终计分** - `calculateFinalScore()` (VP + 金币/3)
+3. **连锁建造** - `Player::has_card()`
+4. **资源管理** - `add_resource()`, `get_resource()`
+5. **军事胜利** - `has_military_victory()`
+6. **科技胜利** - `has_science_victory()`
+7. **最终计分** - `calculate_final_score()` (VP + 金币/3)
 
 ### 📝 需要其他模块配合的规则
 - 卡牌金字塔结构（成员2负责）

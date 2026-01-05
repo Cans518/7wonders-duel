@@ -5,7 +5,7 @@
 // #include "../cards/member2.h"
 
 // enum class ResourceType {
-//     Wood, Stone, Clay, Ore, Papyrus, Glass, Textile
+//     Wood, Stone, Clay, Papyrus, Glass
 // };
 
 // class Player {
