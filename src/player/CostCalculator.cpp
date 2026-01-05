@@ -1,109 +1,95 @@
 #include "CostCalculator.h"
+#include "player/Player.h"
+#include "cards/Card.h"
 #include <algorithm>
+#include <map>
 
-// 辅助函数：判断资源是否为可交易资源（褐色或灰色）
-bool CostCalculator::isTradableResource(Resource resource) {
-    return resource == Resource::WOOD || 
-           resource == Resource::CLAY || 
-           resource == Resource::STONE ||
-           resource == Resource::GLASS || 
-           resource == Resource::PAPYRUS;
+bool CostCalculator::is_tradable_resource(Resource res) {
+    return (res == Resource::WOOD || res == Resource::CLAY || res == Resource::STONE ||
+            res == Resource::GLASS || res == Resource::PAPYRUS);
 }
 
-// 交易成本计算
-int CostCalculator::calculateTradeCost(const Player& buyer, const Player& seller, Resource resource) {
-    if (buyer.has_trading_post(resource)) {
-        return 1;
-    }
-    int baseCost = 2;
-    int sellerCardCount = seller.get_resource_producing_card_count(resource);
-    return baseCost + sellerCardCount;
+int CostCalculator::calculate_trade_cost(const Player& buyer, const Player& seller, Resource res) {
+    int base = buyer.get_trade_cost(res);
+    if (base == 1) return 1;
+    
+    // 判定资源所属颜色分类 (WOOD, CLAY, STONE 为棕色，其余为灰色)
+    Color target_col = (res == Resource::GLASS || res == Resource::PAPYRUS) ? Color::GREY : Color::BROWN;
+    return base + seller.get_card_count_by_color(target_col);
 }
 
-// 建造成本计算
-CostCalculator::BuildCostResult CostCalculator::calculateBuildCost(
-    const Player& player, 
-    const Player& opponent, 
-    const Card& card
+CostCalculator::BuildCostResult CostCalculator::calculate_build_cost(
+    const Player& player, const Player& opponent, const Card& card
 ) {
     BuildCostResult result;
-    result.canBuild = true;
-    result.isFreeByChain = false;
-    result.totalCoinCost = 0;
+    result.can_build = true;
+    result.total_coin_cost = 0;
 
-    // 1. 检查连锁建造
-    for (const auto& pre : card.chain_prerequisites) {
-        if (player.has_card(pre)) {
-            result.isFreeByChain = true;
-            return result;
+    // 1. 连锁免费判定
+    if (card.can_be_free(player)) {
+        result.is_free_by_chain = true;
+        return result;
+    }
+
+    // 2. 初始金币成本
+    auto it_coin = card.cost.find(Resource::COIN);
+    if (it_coin != card.cost.end()) {
+        result.total_coin_cost += it_coin->second;
+    }
+
+    // 3. 建立临时缺口统计 Map
+    std::map<Resource, int> current_shortages;
+    for (auto const& [res, req] : card.cost) {
+        if (res == Resource::COIN) continue;
+        int produced = player.get_resource(res);
+        if (produced < req) {
+            current_shortages[res] = req - produced;
         }
     }
 
-    // 2. 处理金币成本
-    auto coinIt = card.cost.find(Resource::COIN);
-    if (coinIt != card.cost.end()) {
-        result.totalCoinCost += coinIt->second;
-    }
-
-    // 3. 计算资源缺口
-    std::map<Resource, int> shortages;
-    for (const auto& [resource, requiredAmount] : card.cost) {
-        if (resource == Resource::COIN) continue;
-        int producedAmount = player.get_resource(resource);
-        if (producedAmount < requiredAmount) {
-            shortages[resource] = requiredAmount - producedAmount;
-        }
-    }
-
-    // 4. 使用二选一资源抵扣
-    auto wildcards = player.get_wildcard_resources();
+    // 4. 多选一资源抵扣 (Safe Loop)
+    const auto& wildcards = player.get_wildcard_resources();
     for (const auto& options : wildcards) {
-        for (Resource res : options) {
-            if (shortages[res] > 0) {
-                shortages[res]--;
-                if (shortages[res] == 0) shortages.erase(res);
-                break;
+        bool used_this_wildcard = false;
+        for (Resource opt : options) {
+            if (!used_this_wildcard && current_shortages.count(opt) && current_shortages[opt] > 0) {
+                current_shortages[opt]--;
+                used_this_wildcard = true; // 确保一张多选一卡只抵扣一个资源
             }
         }
     }
 
-    // 5. 计算购买费用
-    for (const auto& [resource, amount] : shortages) {
-        result.missingResources[resource] = amount;
-        if (isTradableResource(resource)) {
-            int tradeCostPerUnit = calculateTradeCost(player, opponent, resource);
-            result.resourcesToBuy[resource] = amount;
-            result.totalCoinCost += tradeCostPerUnit * amount;
+    // 5. 计算剩余缺口的购买费
+    for (auto const& [res, amt] : current_shortages) {
+        if (amt <= 0) continue;
+        if (is_tradable_resource(res)) {
+            int price = calculate_trade_cost(player, opponent, res);
+            result.total_coin_cost += (price * amt);
         } else {
-            result.canBuild = false;
+            result.can_build = false; 
             return result;
         }
     }
 
-    // 6. 检查金币
-    if (player.get_coins() < result.totalCoinCost) {
-        result.canBuild = false;
+    // 6. 最终余额判定
+    if (player.get_coins() < result.total_coin_cost) {
+        result.can_build = false;
     }
+
     return result;
 }
 
-bool CostCalculator::canAffordWithTrade(
-    const Player& player, 
-    const Player& opponent, 
-    const Card& card
-) {
-    return calculateBuildCost(player, opponent, card).canBuild;
+bool CostCalculator::can_afford_with_trade(const Player& player, const Player& opponent, const Card& card) {
+    return calculate_build_cost(player, opponent, card).can_build;
 }
 
-bool CostCalculator::executeBuild(
-    Player& player, 
-    const Player& opponent, 
-    const Card& card
-) {
-    BuildCostResult result = calculateBuildCost(player, opponent, card);
-    if (!result.canBuild) return false;
-    if (result.totalCoinCost > 0) {
-        if (!player.spend_coins(result.totalCoinCost)) return false;
+bool CostCalculator::execute_build(Player& player, const Player& opponent, const Card& card) {
+    BuildCostResult res = calculate_build_cost(player, opponent, card);
+    if (!res.can_build) return false;
+    
+    // 执行扣款
+    if (res.total_coin_cost > 0) {
+        if (!player.spend_coins(res.total_coin_cost)) return false;
     }
     return true;
 }

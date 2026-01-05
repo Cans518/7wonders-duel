@@ -1,14 +1,15 @@
 #include "Game.h"
 #include "Board.h"
-#include "../player/Player.h"
-#include "../player/CostCalculator.h"
-#include "../cards/Card.h"
-#include "../cards/CardStructure.h"
-#include "../view/Ctrller.h"
+#include "player/Player.h"
+#include "player/CostCalculator.h"
+#include "cards/Card.h"
+#include "cards/CardStructure.h"
+#include "view/Ctrller.h"
 #include <iostream>
 #include <algorithm>
+#include <random>
 
-// 单例实例初始化
+// 1. 核心修复：初始化单例静态指针 (解决 Error 1 / ld 报错)
 Game* Game::instance = nullptr;
 
 Game& Game::getInstance() {
@@ -19,10 +20,10 @@ Game& Game::getInstance() {
 }
 
 Game::Game() : board(std::make_unique<Board>()), 
-               currentAge(1), 
-               currentPlayerIdx(0), 
-               isGameOver(false), 
-               extraTurnTriggered(false) {}
+               current_age(1), 
+               current_player_idx(0), 
+               is_game_over(false), 
+               extra_turn_triggered(false) {}
 
 void Game::init() {
     std::cout << "[Game] Initializing 7 Wonders Duel..." << std::endl;
@@ -32,188 +33,195 @@ void Game::init() {
     players.push_back(std::make_shared<Player>("Player 1"));
     players.push_back(std::make_shared<Player>("Player 2"));
 
-    // 初始金币：根据规则通常是7元
+    // 规则书 P6：初始金币为 7
     for(auto& p : players) {
-        p->addCoins(7); 
+        p->add_coins(7); 
     }
 
-    // 初始化第一时代卡牌布局 (Member 2 需要提供 createAllCards 逻辑)
-    // 这里假设逻辑已经迁移到符合 20 张牌的金字塔结构
-    auto age1_deck = createAllCards(); // 实际应按时代筛选
-    // 暂时模拟洗牌取20张
-    cardStructure = std::make_unique<CardStructure>(1, std::move(age1_deck));
+    // 分发奇迹 (每人 4 个)
+    distribute_wonders();
+
+    // 构建初始时代布局
+    setup_age_structure(1);
 }
 
-// 核心动作 1：购买/建造卡牌
-bool Game::takeCard(int pos, Player& player) {
-    try {
-        // 1. 从卡牌结构中尝试取牌（处理 pos 校验逻辑由 cardStructure 内部负责）
-        std::unique_ptr<Card> card = cardStructure->takeCard(pos);
-        if (!card) return false;
+void Game::distribute_wonders() {
+    auto all_wonders = createAllWonders();
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(all_wonders.begin(), all_wonders.end(), g);
+    
+    // 规则 P7：给 P1 前 4 个，P2 后 4 个
+    for(int i = 0; i < 4; ++i) players[0]->add_wonder(all_wonders[i]);
+    for(int i = 4; i < 8; ++i) players[1]->add_wonder(all_wonders[i]);
+}
 
-        // 2. 检查建造资格与成本支付
-        // 优先检查是否有“连锁建筑”提供的免费建造机会
-        bool isFree = player.canBuildFreeByChain(card->chain_prerequisites);
-        
-        if (!isFree) {
-            // 调用 Member 3 的成本计算器
-            // 注意：此处 result.totalCoinCost 已包含资源购买费和卡牌基础费
-            auto result = CostCalculator::calculateBuildCost(player, *getOpponent(), card->cost);
-            
-            if (!result.canBuild) {
-                // 如果钱不够，将卡牌还回结构（或报错），此处视底层实现而定
-                std::cout << "Cannot afford card: " << card->name << std::endl;
-                return false; 
-            }
-            
-            player.spendCoins(result.totalCoinCost);
-        }
+void Game::setup_age_structure(int age) {
+    auto all_cards = createAllCards();
+    std::vector<std::unique_ptr<Card>> age_deck;
+    for (auto& c : all_cards) {
+        if (c->age == age) age_deck.push_back(std::move(c));
+    }
 
-        // 3. 应用卡牌即时效果 (核心逻辑！)
-        // 这里的 Lambda 会调用 player.addCoins, game.movePawn 等
-        if (card->effect) {
-            card->effect(player, *this);
-        }
+    // 增加一个调试打印，看看实际找到了多少张牌
+    std::cout << "[DEBUG] Loading Age " << age << ", found " << age_deck.size() << " cards." << std::endl;
 
-        // 4. 记录卡牌到玩家名下并登记产出
-        player.addBuiltCard(card->name, card->color);
-        
-        // 规则：棕卡和灰卡提供永久资源产出，用于后续买牌的成本抵扣
-        if (card->color == Color::BROWN || card->color == Color::GREY) {
-            // 假设 Member 2 的 Card 类有一个成员 std::vector<Resource> producedResources
-            for (auto res : card->producedResources) {
-                player.addResourceProducingCard(res);
-            }
-        }
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(age_deck.begin(), age_deck.end(), g);
 
-        // 5. 检查是否因为此牌的效果（如军事或科技）导致游戏立即结束
-        if (checkSupremacyVictory()) {
-            isGameOver = true;
-            return true;
-        }
+    // 必须确保正好 20 张
+    if (age_deck.size() > 20) {
+        age_deck.resize(20); // 使用 resize 更安全
+    } else if (age_deck.size() < 20) {
+        std::cerr << "Fatal Error: Not enough cards for Age " << age << std::endl;
+        exit(1);
+    }
+    
+    cardStructure = std::make_unique<CardStructure>(age, std::move(age_deck));
+}
 
-        // 6. 切换回合逻辑
-        if (!extraTurnTriggered) {
-            currentPlayerIdx = (currentPlayerIdx + 1) % 2;
-        } else {
-            std::cout << "[Game] Extra turn triggered for " << player.getName() << "!" << std::endl;
-            extraTurnTriggered = false; // 使用后重置
-        }
+// --- 核心动作 1：购买/建造卡牌 ---
+bool Game::take_card(int pos, Player& player) {
+    const Card* card_ptr = cardStructure->get_card(pos);
+    if (!card_ptr) return false;
 
-        return true;
-
-    } catch (const std::exception& e) {
-        std::cerr << "[Game Error] Action failed at pos " << pos << ": " << e.what() << std::endl;
+    // 支付逻辑（调用 CostCalculator，含连锁检查）
+    if (!CostCalculator::execute_build(player, *get_opponent(), *card_ptr)) {
         return false;
     }
+
+    // 从金字塔移走卡牌并获取所有权
+    std::unique_ptr<Card> card = cardStructure->take_card(pos);
+
+    // 执行结构化效果 (VP, 盾牌, 符号)
+    card->apply_effect(player, *this);
+    player.add_built_card(card->name, card->color);
+
+    if (check_supremacy_victory()) return true;
+
+    handle_turn_switch();
+    return true;
+} 
+
+// --- 核心动作 2：弃牌换钱 ---
+void Game::discard_for_coins(int pos, Player& player) {
+    std::unique_ptr<Card> card = cardStructure->take_card(pos);
+    if (!card) return;
+
+    // 规则 P10：基础 2 金 + 拥有的黄卡数量
+    int gain = 2 + player.count_yellow();
+    player.add_coins(gain);
+    
+    discard_pile.push_back(std::move(card));
+    std::cout << "[Game] " << player.get_name() << " gained " << gain << " coins." << std::endl;
+    
+    handle_turn_switch();
 }
 
-// 核心动作 2：弃牌换钱
-void Game::discardForCoins(int pos, Player& player) {
-    try {
-        std::unique_ptr<Card> card = cardStructure->takeCard(pos);
-        // 规则：2元 + 玩家拥有的每张黄卡额外1元
-        int coins = 2 + player.countYellowCards(); 
-        player.addCoins(coins);
-        
-        std::cout << player.getName() << " discarded " << card->name << " and earned " << coins << " coins." << std::endl;
-        
-        // 弃牌从不触发额外回合
-        currentPlayerIdx = (currentPlayerIdx + 1) % 2;
-        extraTurnTriggered = false; 
-    } catch (...) {}
+// --- 核心动作 3：建造奇迹 ---
+bool Game::build_wonder(int wonder_idx, int pos, Player& player) {
+    Wonder& wonder = player.get_wonder(wonder_idx);
+    
+    // 检查奇迹状态及金字塔是否有地基
+    if (wonder.is_built || !cardStructure->get_card(pos)) return false;
+
+    // 取走卡牌作为地基（面朝下）
+    std::unique_ptr<Card> foundation = cardStructure->take_card(pos);
+    discard_pile.push_back(std::move(foundation));
+
+    // 应用奇迹结构化效果
+    player.add_victory_points(wonder.victory_points);
+    if (wonder.shields > 0) move_pawn(wonder.shields);
+    
+    // 执行 Lambda 效果 (如 Appian Way 扣钱)
+    if (wonder.effect) {
+        wonder.effect(player, *get_opponent(), *this);
+    }
+
+    wonder.is_built = true;
+    player.increment_wonder_count();
+
+    handle_turn_switch();
+    return true;
 }
 
-// 核心动作 3：建造奇迹
-void Game::buildWonder(int wonderIdx, int pos, Player& player) {
-    // TODO: 实现奇迹建造逻辑
-    // 1. 检查玩家是否还有奇迹位
-    // 2. 计算奇迹成本并支付
-    // 3. 从 cardStructure 中移除 pos 位置卡牌（作为奇迹地基）
-    // 4. 触发奇迹效果
-    // 5. 换人逻辑 (注意：有些奇迹会设置 extraTurnTriggered = true)
+void Game::handle_turn_switch() {
+    if (extra_turn_triggered) {
+        std::cout << ">>> EXTRA TURN! <<<" << std::endl;
+        extra_turn_triggered = false; 
+    } else {
+        current_player_idx = (current_player_idx + 1) % 2;
+    }
+}
+
+void Game::move_pawn(int steps) {
+    // P1 推向 P2 (+), P2 推向 P1 (-)
+    int direction = (current_player_idx == 0) ? 1 : -1;
+    if (board->move_pawn(steps * direction, *players[0], *players[1])) {
+        is_game_over = true;
+    }
+}
+
+bool Game::check_supremacy_victory() {
+    // 军事压制
+    if (board->get_pawn_position() <= 0 || board->get_pawn_position() >= 18) return true;
+    // 科技压制
+    if (get_current_player()->get_unique_science_count() >= 6) return true;
+    return false;
 }
 
 void Game::run() {
     init();
     Controller controller(*this); 
 
-    while (!isGameOver && currentAge <= 3) {
-        while (!cardStructure->isEmpty() && !isGameOver) { 
-            playTurn(controller);
-            if (checkSupremacyVictory()) {
-                isGameOver = true;
+    while (!is_game_over && current_age <= 3) {
+        while (!cardStructure->is_empty() && !is_game_over) { 
+            controller.player_turn(*get_current_player());
+            if (check_supremacy_victory()) {
+                is_game_over = true;
                 break;
             }
         }
 
-        if (!isGameOver) {
-            endAge();
+        if (!is_game_over) {
+            current_age++;
+            if (current_age <= 3) {
+                std::cout << "\n--- Starting Age " << current_age << " ---" << std::endl;
+                setup_age_structure(current_age);
+            }
         }
     }
-    // TODO: 游戏结束最后的得分计算与结果展示
-}
-
-void Game::playTurn(Controller& controller) { 
-    Player* curr = getCurrentPlayer();
-    std::cout << "\n--- " << curr->getName() << "'s Turn ---" << std::endl;
     
-    // 委托给 Controller 处理 UI 和输入
-    controller.player_turn(*curr); 
+    Player* winner = players[0]->calculate_final_score() > players[1]->calculate_final_score() ? players[0].get() : players[1].get();
+    std::cout << "\nGAME OVER! Winner: " << winner->get_name() << std::endl;
 }
 
-bool Game::checkSupremacyVictory() {
-    // 1. 军事压制：棋子到达 0 或 18
-    if (board->getPawnPosition() <= 0 || board->getPawnPosition() >= 18) {
-        std::cout << "Military Supremacy Victory!" << std::endl;
-        return true;
-    }
-    
-    // 2. 科技压制：收集 6 种不同的科技符号
-    if (getCurrentPlayer()->getUniqueScienceCount() >= 6) {
-        std::cout << "Scientific Supremacy Victory!" << std::endl;
-        return true;
-    }
-    
-    return false;
+// --- Getter 组 (对齐 snake_case) ---
+
+Player* Game::get_current_player() { return players[current_player_idx].get(); }
+Player* Game::get_opponent() { return players[(current_player_idx + 1) % 2].get(); }
+
+Player* Game::get_opponent(Player& p) {
+    return (players[0].get() == &p) ? players[1].get() : players[0].get();
 }
 
-void Game::endAge() {
-    std::cout << "\n--- Age " << currentAge << " has ended ---" << std::endl;
-    currentAge++;
-    
-    if (currentAge <= 3) {
-        // TODO: 逻辑：军事落后方选择谁开始下一时代
-        // 此处暂时简化为默认切换
-        // cardStructure = CardStructureFactory::createAge(currentAge);
-    }
+// --- 奇迹效果回调接口 ---
+
+void Game::trigger_progress_token_selection(Player& p, int count) {
+    std::cout << "[INFO] Progress Token Selection triggered for " << p.get_name() << std::endl;
 }
 
-Player* Game::getCurrentPlayer() {
-    return players[currentPlayerIdx].get();
+void Game::trigger_build_from_discard(Player& p) {
+    std::cout << "[INFO] Build from Discard triggered for " << p.get_name() << std::endl;
 }
 
-Player* Game::getOpponent() {
-    return players[(currentPlayerIdx + 1) % 2].get();
+std::vector<Card*> Game::get_discard_pile_view() {
+    std::vector<Card*> view;
+    for(auto& c : discard_pile) view.push_back(c.get());
+    return view;
 }
 
-void Game::movePawn(int steps) {
-    if (!board) return;
-
-    // 逻辑：
-    // 如果当前玩家是 P1 (Idx 0)，军事推进意味着向 P2 的首都移动 (amount > 0)
-    // 如果当前玩家是 P2 (Idx 1)，军事推进意味着向 P1 的首都移动 (amount < 0)
-    int actualAmount = (currentPlayerIdx == 0) ? steps : -steps;
-
-    // 获取玩家引用
-    Player& p1 = *players[0];
-    Player& p2 = *players[1];
-
-    // 调用 Board 执行移动
-    bool isVictory = board->movePawn(actualAmount, p1, p2);
-
-    if (isVictory) {
-        isGameOver = true;
-        std::cout << "--- MILITARY SUPREMACY! Game Over ---" << std::endl;
-    }
+void Game::check_science_victory(Player& p) {
+    if (p.get_unique_science_count() >= 6) is_game_over = true;
 }

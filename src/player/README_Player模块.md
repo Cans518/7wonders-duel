@@ -63,7 +63,7 @@ if (player.spend_coins(5)) {
 if (CostCalculator::canAffordWithTrade(player, opponent, card)) {
     // 执行建造：自动扣除金币（含卡牌成本和交易费）
     // 注意：资源是永久产出，不会被扣除
-    if (CostCalculator::executeBuild(player, opponent, card)) {
+    if (CostCalculator::execute_build(player, opponent, card)) {
         player.add_built_card(card.name, card.color);
         // 如果是资源卡，还需调用 player.add_resource 等
     }
@@ -151,7 +151,7 @@ void buildCardExample(Player& player, Player& opponent, const Card& card) {
     }
     
     // 3. 执行建造
-    if (CostCalculator::executeBuild(player, opponent, card)) {
+    if (CostCalculator::execute_build(player, opponent, card)) {
         std::cout << "建造成功：" << card.name << std::endl;
         
         // 4. 添加已建造卡牌
@@ -214,7 +214,7 @@ void displayPlayerStatus(const Player& player) {
 // Controller 模块处理用户输入
 void handleBuildAction(Player& player, Player& opponent, const Card& card) {
     if (CostCalculator::canAffordWithTrade(player, opponent, card)) {
-        CostCalculator::executeBuild(player, opponent, card);
+        CostCalculator::execute_build(player, opponent, card);
         player.add_built_card(card.name, card.color);
     } else {
         std::cout << "无法建造此卡牌！" << std::endl;

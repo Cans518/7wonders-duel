@@ -1,38 +1,95 @@
-#include "ctrller.h"
-#include "ConsoleView.h"  // 包含 ConsoleView 的定义
+#include "../view/Ctrller.h"
+#include "ConsoleView.h"
+#include "../core/Game.h"
+#include "../player/Player.h"
+#include "../cards/CardStructure.h"
+#include <iostream>
+#include <algorithm>
+#include <string>
 
-Controller::Controller(Game& g) : game(g) {}
-
-// 玩家回合处理
+Controller::Controller(Game& game) : game(game), view(std::make_unique<ConsoleView>()) {}
+Controller::~Controller() = default;
 void Controller::player_turn(Player& player) {
-    // 展示卡牌结构和可获取卡牌
-    auto& structure = game.get_structure();
-    view.display_structure(structure, structure.get_accessible());
-    // 展示玩家资源
-    std::cout << "你的资源：" << player.print_resources() << "\n";
-    // 提示操作指令
-    std::cout << "请选择操作（take <位置> | wonder <奇迹编号> <卡牌位置> | discard <位置>）：";
-    std::string input;
-    std::getline(std::cin, input);
-    // 解析输入（示例："take 3" 表示选取3号位置卡牌）
-    std::stringstream ss(input);
-    std::string cmd;
-    ss >> cmd;
-    if (cmd == "take") {
-        int pos;
-        ss >> pos;
-        game.take_card(pos, player);  // 调用Game类方法选取卡牌并应用效果
-    } else if (cmd == "wonder") {
-        int wonder_num, pos;
-        ss >> wonder_num >> pos;
-        // 校验奇迹是否可建造，将指定位置卡牌置于奇迹之下
-        game.build_wonder(wonder_num - 1, pos, player);
-    } else if (cmd == "discard") {
-        int pos;
-        ss >> pos;
-        game.discard_for_coins(pos, player);  // 弃牌获得金币
-    } else {
-        std::cout << "无效指令，请重新输入！\n";
-        player_turn(player);  // 重新提示输入
+    bool turn_finished = false;
+    
+    // 1. 每一回合开始前，显示当前的全局战况
+    view->display_board(game);
+    view->display_player_status(*game.get_opponent(player)); // 显示对手状态
+    view->display_player_status(player);                   // 显示自己状态
+    view->display_structure(game.get_structure());         // 显示卡牌金字塔
+
+    while (!turn_finished) {
+        std::cout << "\n[ " << player.get_name() << "'s Turn ]\n";
+        std::cout << "Enter Card ID to select, or -1 to see options: ";
+        
+        int card_pos;
+        if (!(std::cin >> card_pos)) {
+            std::cin.clear();
+            std::cin.ignore(1000, '\n');
+            continue;
+        }
+
+        if (card_pos == -1) {
+            // 重新显示布局
+            view->display_structure(game.get_structure());
+            continue;
+        }
+
+        // 验证卡牌是否可取
+        const Card* selected_card = game.get_structure().get_card(card_pos);
+        if (!selected_card) {
+            view->display_message("Invalid ID: Slot is empty.");
+            continue;
+        }
+
+        // 检查是否被压住
+        auto acc = game.get_structure().get_accessible();
+        if (std::find(acc.begin(), acc.end(), card_pos) == acc.end()) {
+            view->display_message("Action Failed: Card is blocked by others!");
+            continue;
+        }
+
+        // 2. 选择动作
+        std::cout << "Select Action for card [" << selected_card->name << "]:\n";
+        std::cout << "1. Build Building\n";
+        std::cout << "2. Discard for Coins\n";
+        std::cout << "3. Construct Wonder\n";
+        std::cout << "Choice: ";
+        
+        int action;
+        std::cin >> action;
+
+        switch (action) {
+            case 1: // 建造
+                if (game.take_card(card_pos, player)) {
+                    view->display_message("Successfully built: " + selected_card->name);
+                    turn_finished = true;
+                } else {
+                    view->display_message("Action Failed: Not enough resources or coins!");
+                }
+                break;
+
+            case 2: // 弃牌
+                game.discard_for_coins(card_pos, player);
+                view->display_message("Card discarded. You gained coins.");
+                turn_finished = true;
+                break;
+
+            case 3: // 建奇迹
+                // 暂时简化逻辑，wonderIdx 这里假设为 0，实际应从玩家拥有的奇迹中选
+                game.build_wonder(0, card_pos, player); 
+                view->display_message("Wonder construction attempted.");
+                turn_finished = true;
+                break;
+
+            default:
+                view->display_message("Invalid choice. Try again.");
+                break;
+        }
     }
+}
+
+// 供 Game 触发的特殊交互显示
+void Controller::show_message(const std::string& msg) {
+    view->display_message(msg);
 }

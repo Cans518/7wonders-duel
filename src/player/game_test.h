@@ -36,7 +36,7 @@
 //         return true;
 //     }
 
-//     void addCoins(int n) {
+//     void add_coins(int n) {
 //         coins += n;
 //     }
 

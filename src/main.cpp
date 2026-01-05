@@ -1,9 +1,8 @@
+// main.cpp
 #include "core/Game.h"
 
 int main() {
-    // 启动游戏引擎
-    Game& game = Game::getInstance();
-    game.run();
-    
+    // 获取单例实例并运行
+    Game::getInstance().run();
     return 0;
 }

@@ -2,68 +2,78 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include "Types.h" // 核心：包含所有枚举，如 ProgressToken
+#include "cards/Card.h"
+#include "cards/Wonder.h"
 
-// 前向声明，减少头文件相互包含导致的编译错误
+// 前向声明
 class Board;
 class Player;
 class CardStructure;
 class Controller;
-class Card;
 
 class Game {
 private:
-    // 1. 单例模式私有成员
     static Game* instance;
-    Game(); // 私有构造函数
+    Game(); 
 
-    // 2. 核心组件
     std::unique_ptr<Board> board;
     std::vector<std::shared_ptr<Player>> players;
     std::unique_ptr<CardStructure> cardStructure;
     
-    // 3. 游戏状态变量
-    int currentAge;
-    int currentPlayerIdx;
-    bool isGameOver;
-    bool extraTurnTriggered; // 用于某些奇迹提供的“连续行动”效果
+    int current_age;
+    int current_player_idx;
+    bool is_game_over;
+    bool extra_turn_triggered; 
+
+    std::vector<std::unique_ptr<Card>> discard_pile; 
+    std::vector<ProgressToken> progress_token_pool;   
+
+    // 内部私有辅助
+    void setup_age_structure(int age);
+    void handle_turn_switch();
+    void distribute_wonders(); 
 
 public:
-    // 4. 单例获取接口
     static Game& getInstance();
-    
-    // 5. 禁止拷贝和赋值（单例模式标准操作）
     Game(const Game&) = delete;
     void operator=(const Game&) = delete;
 
-    // 6. 生命周期管理
-    void init(); // 初始化玩家、金币、初始时代布局
-    void run();  // 游戏主循环
-    void endAge(); // 时代切换逻辑（如Age 1结束进入Age 2）
+    void init(); 
+    void run();  
+    void end_age(); 
 
-    // 7. 回合逻辑处理
-    void playTurn(Controller& controller);
+    // --- 核心动作 (对齐 snake_case) ---
+    bool take_card(int pos, Player& player);
+    bool build_wonder(int wonder_idx, int pos, Player& player);
+    void discard_for_coins(int pos, Player& player);
 
-    // 8. 核心游戏动作（供 Controller 调用）
-    // 返回 bool 可以让 Controller 知道操作是否成功执行
-    bool takeCard(int pos, Player& player);
-    void buildWonder(int wonderIdx, int pos, Player& player);
-    void discardForCoins(int pos, Player& player);
+    // --- 状态检查 ---
+    bool check_supremacy_victory(); 
+    void check_science_victory(Player& p);
 
-    // 9. 胜利条件检查
-    bool checkSupremacyVictory(); // 检查军事压制或科技压制
-
-    // 10. 辅助工具接口（Getter/Setter）
-    Board* getBoard() { return board.get(); }
-    Player* getCurrentPlayer();
-    Player* getOpponent();
-    CardStructure& getStructure() { return *cardStructure; } 
+    // --- Getter & Setter (对齐 snake_case) ---
+    Board* get_board() { return board.get(); }
+    Player* get_current_player();
     
-    int getCurrentAge() const { return currentAge; }
-    void setIsGameOver(bool status) { isGameOver = status; }
-    void setExtraTurn(bool status) { extraTurnTriggered = status; }
+    // 获取当前非回合玩家
+    Player* get_opponent(); 
+    // 获取指定玩家的对手 (解决 ctrller.cpp 报错)
+    Player* get_opponent(Player& p); 
 
-    void movePawn(int steps); // 执行军事推进，steps 永远为正，方向由函数内部根据当前玩家判断
+    CardStructure& get_structure() { return *cardStructure; } 
+    int get_current_age() const { return current_age; }
+    
+    // --- 供 Wonder/Card 调用的回调接口 ---
+    void set_extra_turn(bool status) { extra_turn_triggered = status; }
+    void move_pawn(int steps); 
+    
+    // 交互触发
+    void trigger_progress_token_selection(Player& p, int count);
+    void trigger_build_from_discard(Player& p);
+    
+    // 获取弃牌堆视图
+    std::vector<Card*> get_discard_pile_view(); 
 
-    // 析构函数（单例清理）
     ~Game() = default;
 };

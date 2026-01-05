@@ -9,25 +9,23 @@
 
 class CardStructure {
 private:
-    std::vector<std::unique_ptr<Card>> cards;  // 存储所有20张卡牌
-    std::map<int, std::vector<int>> unlocks;   // 结构：位置i 被拿走后，会尝试解锁这些位置
-    std::map<int, int> dependency_count;       // 核心逻辑：位置i 还需要被解锁多少次才能拿（入度）
-    std::set<int> accessible;                  // 当前真正可以被点击拿取的卡牌索引
+    std::vector<std::unique_ptr<Card>> cards;
+    std::map<int, std::vector<int>> unlocks;
+    std::map<int, int> dependency_count;
+    std::set<int> accessible;
     int current_age;
-    // 内部硬编码工具
-    void addDependency(int supporter, int target); 
-    void setupDependenciesAndFaces(int age);
+
+    // --- 重点修改：确保函数名与 .cpp 一致 ---
+    void add_dependency(int supporter, int target); 
+    void setup_dependencies_and_faces(int age); // 之前这里可能叫 setup_layout
 
 public:
     CardStructure(int age, std::vector<std::unique_ptr<Card>> deck);
-    
-    std::vector<int> getAccessible() const;
-    std::unique_ptr<Card> takeCard(int pos);
-    
-    bool isEmpty() const;
-    const Card* getCard(int pos) const; 
-    int getAge() const { return current_age; }
-
+    std::vector<int> get_accessible() const;
+    std::unique_ptr<Card> take_card(int pos);
+    bool is_empty() const;
+    const Card* get_card(int pos) const; 
+    int get_age() const { return current_age; }
 };
 
-#endif // CARD_STRUCTURE_H
+#endif

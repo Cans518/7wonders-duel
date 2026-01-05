@@ -1,56 +1,75 @@
 #include "Board.h"
 #include "../player/Player.h"
-#include <cmath>
-//完善惩罚逻辑
+#include <algorithm>
 
-Board::Board() {
-    conflictPawnPosition = 9; // 初始在中间 
-    for(int i=0; i<4; i++) militaryTokens[i] = true; // 4个标记都在
+Board::Board() : pawn_position(9) {
+    for(int i = 0; i < 4; ++i) military_tokens_active[i] = true;
 }
 
-bool Board::movePawn(int amount, Player& p1, Player& p2) {
-    conflictPawnPosition += amount;
+bool Board::move_pawn(int amount, Player& p1, Player& p2) {
+    pawn_position += amount;
     
-    // 限制边界
-    if (conflictPawnPosition < 0) conflictPawnPosition = 0;
-    if (conflictPawnPosition > 18) conflictPawnPosition = 18;
+    // 边界限制
+    if (pawn_position < 0) pawn_position = 0;
+    if (pawn_position > 18) pawn_position = 18;
 
-    // 检查 Looting 惩罚 (只在第一次跨越时触发)
-    // 向 P1 首都移动 (amount < 0)，检查 P1 侧标记
+    // --- 军事惩罚逻辑 (Looting Tokens) ---
+
+    // 棋子向 P1 侧移动 (amount < 0)，检查 P1 侧标记
     if (amount < 0) {
-        if (conflictPawnPosition <= 6 && militaryTokens[0]) {
-            p1.loseCoins(2); militaryTokens[0] = false;
-            std::cout << "[Board] P1 lost 2 coins due to military pressure!\n";
+        if (pawn_position <= 6 && military_tokens_active[0]) {
+            p1.add_coins(-2); 
+            military_tokens_active[0] = false;
+            std::cout << "[Board] " << p1.get_name() << " lost 2 coins (Military Penalty)!\n";
         }
-        if (conflictPawnPosition <= 3 && militaryTokens[1]) {
-            p1.loseCoins(5); militaryTokens[1] = false;
-            std::cout << "[Board] P1 lost 5 coins due to military pressure!\n";
+        if (pawn_position <= 3 && military_tokens_active[1]) {
+            p1.add_coins(-5); 
+            military_tokens_active[1] = false;
+            std::cout << "[Board] " << p1.get_name() << " lost 5 coins (Military Penalty)!\n";
         }
     } 
-    // 向 P2 首都移动 (amount > 0)，检查 P2 侧标记
+    // 棋子向 P2 侧移动 (amount > 0)，检查 P2 侧标记
     else if (amount > 0) {
-        if (conflictPawnPosition >= 12 && militaryTokens[2]) {
-            p2.loseCoins(2); militaryTokens[2] = false;
-            std::cout << "[Board] P2 lost 2 coins due to military pressure!\n";
+        if (pawn_position >= 12 && military_tokens_active[2]) {
+            p2.add_coins(-2); 
+            military_tokens_active[2] = false;
+            std::cout << "[Board] " << p2.get_name() << " lost 2 coins (Military Penalty)!\n";
         }
-        if (conflictPawnPosition >= 15 && militaryTokens[3]) {
-            p2.loseCoins(5); militaryTokens[3] = false;
-            std::cout << "[Board] P2 lost 5 coins due to military pressure!\n";
+        if (pawn_position >= 15 && military_tokens_active[3]) {
+            p2.add_coins(-5); 
+            military_tokens_active[3] = false;
+            std::cout << "[Board] " << p2.get_name() << " lost 5 coins (Military Penalty)!\n";
         }
     }
 
-    return (conflictPawnPosition == 0 || conflictPawnPosition == 18);
+    // 返回是否有人获胜
+    return (pawn_position == 0 || pawn_position == 18);
 }
 
-int Board::getPawnPosition() const {
-    return conflictPawnPosition;
+int Board::get_military_vp(int player_index) const {
+    // 计算距离：棋子距离自己半场的距离
+    // P1 (idx 0) 得分区域在 10-18
+    // P2 (idx 1) 得分区域在 0-8
+    int distance = 0;
+    if (player_index == 0) {
+        distance = pawn_position - 9;
+    } else {
+        distance = 9 - pawn_position;
+    }
+
+    if (distance <= 0) return 0;   // 棋子在己方半场，不加分
+    if (distance <= 2) return 2;   // 第一阶梯
+    if (distance <= 5) return 5;   // 第二阶梯
+    return 10;                     // 第三阶梯 (不含18，因为18直接获胜了)
 }
 
-int Board::getMilitaryPoints(int playerIndex) const {
-    int dist = (playerIndex == 0) ? (9 - conflictPawnPosition) : (conflictPawnPosition - 9);
-    if (dist <= 0) return 0;
-    if (dist >= 1 && dist <= 2) return 2;
-    if (dist >= 3 && dist <= 5) return 5;
-    if (dist >= 6) return 10;
-    return 0;
+void Board::setup_progress_tokens(const std::vector<ProgressToken>& tokens) {
+    active_progress_tokens = tokens;
+}
+
+void Board::remove_progress_token(ProgressToken token) {
+    auto it = std::find(active_progress_tokens.begin(), active_progress_tokens.end(), token);
+    if (it != active_progress_tokens.end()) {
+        active_progress_tokens.erase(it);
+    }
 }
